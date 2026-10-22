@@ -22,11 +22,11 @@ Cần Node.js 22.5 trở lên (dùng SQLite có sẵn trong Node).
 
 ```bash
 npm install
-cp .env.example .env      # rồi điền ADMIN_EMAIL, ADMIN_PASSWORD
+cp .env.example .env      # rồi điền ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD
 npm run dev
 ```
 
-Mở http://localhost:3000 và đăng nhập bằng `ADMIN_EMAIL` / `ADMIN_PASSWORD` trong `.env`.
+Mở http://localhost:3000 và đăng nhập bằng `ADMIN_USERNAME` / `ADMIN_PASSWORD` trong `.env`.
 
 ## Cấu trúc
 

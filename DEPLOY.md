@@ -41,7 +41,8 @@ File `.env`, thư mục `data/` và `uploads/` đã nằm trong `.gitignore`, n�
 | `DB_HOST` | host MySQL ở bước 2 |
 | `DB_PORT` | `3306` |
 | `DB_NAME` / `DB_USER` / `DB_PASSWORD` | thông tin ở bước 2 |
-| `ADMIN_EMAIL` | email đăng nhập của quản trị viên đầu tiên |
+| `ADMIN_USERNAME` | tên đăng nhập của quản trị viên đầu tiên (mặc định `admin`) |
+| `ADMIN_EMAIL` | email của quản trị viên đầu tiên |
 | `ADMIN_PASSWORD` | mật khẩu tạm, đổi ngay sau lần đăng nhập đầu (mục Tài khoản của tôi) |
 | `UPLOAD_DIR` | thư mục lưu ảnh/video **ngoài** thư mục code, ví dụ `/home/<user>/binbin-uploads` (xem đường dẫn `/home/...` trong File Manager) |
 | `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME`, `BREVO_WEBHOOK_SECRET` | xem bước 4 |
@@ -131,7 +132,7 @@ Mỗi lần sửa code: `git push` lên nhánh `main`, rồi bấm **Redeploy** 
 |---|---|
 | App không khởi động, log báo `SESSION_SECRET` | Đặt `SESSION_SECRET` dài ít nhất 32 ký tự. |
 | Log báo lỗi kết nối MySQL | Kiểm tra lại `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`; user phải được gán quyền vào database. |
-| Không đăng nhập được lần đầu | `ADMIN_EMAIL`/`ADMIN_PASSWORD` chỉ dùng để tạo admin khi database chưa có tài khoản nào. Đổi biến sau đó không đổi mật khẩu. |
+| Không đăng nhập được lần đầu | `ADMIN_USERNAME`/`ADMIN_EMAIL`/`ADMIN_PASSWORD` chỉ dùng để tạo admin khi database chưa có tài khoản nào. Đổi biến sau đó không đổi mật khẩu. |
 | Đăng nhập xong bị đẩy ra ngay | Truy cập bằng `https://` (cookie đăng nhập chỉ gửi qua HTTPS trên production). |
 | Email không có số liệu mở/nhấp | Kiểm tra URL webhook trong Brevo khớp với `APP_URL` và `BREVO_WEBHOOK_SECRET`. |
 | Tải video bị lỗi | Giới hạn 50 MB; nén video trước khi tải lên. |
