@@ -139,6 +139,37 @@ const migrations = [
       )${tail}`,
     ];
   },
+  // Tự động lấy số liệu kênh và phân tích bằng AI
+  function autoSync({ id, longtext, tail }) {
+    return [
+      'ALTER TABLE channel_accounts ADD COLUMN external_id VARCHAR(200) NULL',
+      'ALTER TABLE channel_accounts ADD COLUMN sync_status VARCHAR(20) NULL',
+      'ALTER TABLE channel_accounts ADD COLUMN sync_error VARCHAR(500) NULL',
+      'ALTER TABLE channel_accounts ADD COLUMN last_synced_at DATETIME NULL',
+      `ALTER TABLE channel_accounts ADD COLUMN extra ${longtext} NULL`,
+      'ALTER TABLE channel_stats ADD COLUMN source VARCHAR(20) NULL',
+      `CREATE TABLE channel_tokens (
+        channel VARCHAR(20) PRIMARY KEY,
+        access_token TEXT NULL,
+        refresh_token TEXT NULL,
+        expires_at DATETIME NULL,
+        refresh_expires_at DATETIME NULL,
+        updated_at DATETIME NOT NULL
+      )${tail}`,
+      `CREATE TABLE channel_insights (
+        id ${id},
+        channel VARCHAR(20) NOT NULL,
+        summary TEXT NULL,
+        highlights TEXT NULL,
+        concerns TEXT NULL,
+        recommendations TEXT NULL,
+        model VARCHAR(60) NULL,
+        created_by INT NULL,
+        created_at DATETIME NOT NULL
+      )${tail}`,
+      'CREATE INDEX idx_insights_channel ON channel_insights (channel, created_at)',
+    ];
+  },
 ];
 
 async function migrate() {

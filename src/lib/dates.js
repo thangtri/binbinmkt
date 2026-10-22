@@ -46,6 +46,13 @@ function addDays(dateStr, n) {
   return fromUTC(d);
 }
 
+// Cộng giây vào chuỗi "YYYY-MM-DD HH:MM:SS" (giờ Việt Nam)
+function addSeconds(dt, s) {
+  const d = new Date(dt.replace(' ', 'T') + 'Z');
+  d.setUTCSeconds(d.getUTCSeconds() + Number(s || 0));
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 function diffDays(a, b) {
   return Math.round((toUTC(b) - toUTC(a)) / 86400000);
 }
@@ -119,6 +126,7 @@ module.exports = {
   now,
   isDate,
   addDays,
+  addSeconds,
   diffDays,
   startOfWeek,
   weekday,

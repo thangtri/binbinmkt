@@ -526,3 +526,161 @@ body.auth {
   color: var(--red-strong);
   text-decoration: underline;
 }
+
+/* Kết nối kênh */
+.connect {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--state);
+}
+.connect.is-ok,
+.cc-sync.is-ok {
+  --state: var(--green);
+}
+.connect.is-warn,
+.cc-sync.is-warn {
+  --state: var(--amber);
+}
+.connect.is-off,
+.cc-sync.is-off {
+  --state: var(--line-strong);
+}
+.connect-state {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.connect-state p {
+  margin: 2px 0 0;
+}
+.connect-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--state);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--state) 20%, transparent);
+}
+.connect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.connect-link {
+  min-width: min(520px, 100%);
+}
+.connect-link input {
+  flex: 1;
+}
+.connect-help {
+  flex-basis: 100%;
+}
+.cc-sync {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+.cc-sync .connect-dot {
+  margin-top: 0;
+  width: 8px;
+  height: 8px;
+}
+
+/* Phân tích AI */
+.ai-panel {
+  border-top: 3px solid var(--red);
+}
+.ai-summary {
+  font-size: 1.02rem;
+  line-height: 1.65;
+  max-width: 72ch;
+}
+.ai-panel h3 {
+  font-size: 0.9rem;
+  margin: 0 0 6px;
+}
+.ai-panel ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.ai-panel li {
+  margin-bottom: 4px;
+}
+.ai-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 12px 0;
+}
+.ai-reco {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--red-tint);
+}
+.ai-run {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+/* Đánh giá Google */
+.reviews {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.reviews li {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.reviews li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.reviews p {
+  margin: 4px 0 0;
+  color: var(--ink-2);
+}
+.review-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: baseline;
+}
+.stars {
+  color: #e8a317;
+  letter-spacing: 1px;
+}
+.stars-off {
+  color: var(--line-strong);
+}
+
+/* Nhập tay thu gọn */
+details.manual summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+details.manual[open] summary {
+  margin-bottom: 10px;
+}
+details.manual .stack {
+  margin-top: 12px;
+}
+
+@media (max-width: 860px) {
+  .ai-cols {
+    grid-template-columns: 1fr;
+  }
+  .connect-link {
+    min-width: 100%;
+  }
+}

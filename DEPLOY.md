@@ -63,11 +63,60 @@ File `.env`, thư mục `data/` và `uploads/` đã nằm trong `.gitignore`, n�
 
 Khi chưa có `BREVO_API_KEY`, app chạy **chế độ thử**: chiến dịch được ghi nhận như đã gửi nhưng không email nào được gửi thật, và trang email luôn hiện cảnh báo.
 
-## 5. Cập nhật về sau
+## 5. Kết nối kênh: tự động lấy số liệu và AI phân tích
+
+Sau khi cấu hình, vào **Kênh → chọn kênh → Kết nối**. Số liệu tự cập nhật mỗi 12 giờ; AI viết nhận xét và đề xuất mỗi tuần (hoặc bấm "Phân tích ngay"). Mỗi kênh cần một ứng dụng nhà phát triển riêng, do chính chủ tài khoản kênh tạo.
+
+Địa chỉ quay về (redirect URI) phải khai báo đúng trong từng ứng dụng:
+`https://<tên-miền-app>/channels/oauth/<kênh>/callback`, với `<kênh>` là `facebook`, `tiktok` hoặc `zalo`.
+
+### Google Maps (chỉ cần dán link)
+1. console.cloud.google.com → tạo project → **APIs & Services → Library** → bật **Places API (New)**. Google yêu cầu gắn tài khoản thanh toán; một lần cập nhật mỗi 12 giờ nằm trong hạn mức miễn phí hằng tháng.
+2. **Credentials → Create credentials → API key**. Nên giới hạn key chỉ dùng cho Places API (New).
+3. Đặt `GOOGLE_PLACES_API_KEY`.
+4. Trong app: Kênh → Google Maps → dán link chia sẻ của khách sạn (Google Maps → Chia sẻ → Sao chép đường liên kết).
+
+Lấy được: điểm đánh giá, số đánh giá, tối đa 5 đánh giá tiêu biểu. Lượt xem hồ sơ và lượt gọi chỉ có qua Google Business Profile Performance API (cần Google duyệt riêng), chưa nằm trong bản này.
+
+### Facebook Page
+1. developers.facebook.com → **My Apps → Create app** → loại **Business**.
+2. Thêm sản phẩm **Facebook Login for Business**, khai báo redirect URI ở trên.
+3. Quyền cần dùng: `pages_show_list`, `pages_read_engagement`, `read_insights`. Khi app còn ở chế độ Development, chỉ người có vai trò trong app (admin, developer, tester) mới kết nối được; với Page của chính khách sạn như vậy là đủ.
+4. Đặt `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`.
+
+Lấy được: người theo dõi, tiếp cận 28 ngày (nếu Meta còn cung cấp chỉ số này), thích/bình luận/chia sẻ của bài 28 ngày gần nhất.
+
+### TikTok
+1. developers.tiktok.com → **Manage apps → Create app**, thêm **Login Kit** và **Display API**.
+2. Scope: `user.info.basic`, `user.info.profile`, `user.info.stats`, `video.list`; khai báo redirect URI.
+3. Gửi app để TikTok duyệt (thường vài ngày). Trong lúc chờ, dùng chế độ Sandbox và thêm tài khoản TikTok của khách sạn làm người dùng thử.
+4. Đặt `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`.
+
+Lấy được: người theo dõi, tổng lượt thích, số video, lượt xem/thích/bình luận/chia sẻ của 20 video mới nhất.
+
+### Zalo OA
+1. developers.zalo.me → tạo ứng dụng → **Official Account** → liên kết với OA của khách sạn, khai báo **Callback URL** là redirect URI ở trên.
+2. Đặt `ZALO_APP_ID`, `ZALO_APP_SECRET` (Khoá bí mật của ứng dụng).
+
+Lấy được: số người quan tâm OA.
+
+### AI phân tích (Claude)
+1. console.anthropic.com → **API Keys → Create Key**, nạp credit vào tài khoản.
+2. Đặt `ANTHROPIC_API_KEY`. Mặc định dùng model `claude-opus-5-5`; đổi bằng `AI_MODEL` nếu cần.
+
+Mỗi lần phân tích một kênh tốn khoảng 1.000–5.000 đồng tiền API tuỳ lượng dữ liệu; mặc định chạy mỗi tuần một lần cho mỗi kênh đã kết nối.
+
+### Lưu ý
+- Token kết nối được mã hoá bằng `ENCRYPTION_KEY` (hoặc `SESSION_SECRET` nếu để trống). Đổi khoá này thì phải bấm Kết nối lại các kênh.
+- TikTok và Zalo tự làm mới token; nếu không dùng app quá lâu (Zalo khoảng 3 tháng, TikTok 1 năm), trang kênh sẽ báo "Cần kết nối lại".
+- Bài trong lịch đã đánh dấu "Đã đăng" và có link trùng với bài trên Facebook/TikTok sẽ được cập nhật lượt thích, bình luận, chia sẻ (và lượt xem với TikTok) mỗi lần đồng bộ.
+- Mục "Nhập số liệu thủ công" vẫn còn ở cuối trang kênh, chỉ dùng khi một kênh chưa kết nối được.
+
+## 6. Cập nhật về sau
 
 Mỗi lần sửa code: `git push` lên nhánh `main`, rồi bấm **Redeploy** trong hPanel (hoặc bật tự động deploy nếu hPanel có tuỳ chọn này). Bảng mới trong database được tạo tự động khi app khởi động.
 
-## 6. Sao lưu
+## 7. Sao lưu
 
 - Database: hPanel → Databases → phpMyAdmin → Export, hoặc dùng bản sao lưu tự động của Hostinger.
 - Ảnh/video: tải thư mục `UPLOAD_DIR` về định kỳ bằng File Manager.

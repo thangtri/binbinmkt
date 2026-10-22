@@ -134,6 +134,8 @@ async function main() {
     console.log(`Bin Bin Marketing đang chạy tại ${config.appUrl} (cổng ${config.port}, db: ${db.dialect})`);
     // Gửi tiếp các chiến dịch bị gián đoạn do máy chủ khởi động lại
     require('./lib/campaigns').resume();
+    // Tự động cập nhật số liệu kênh và phân tích AI định kỳ
+    require('./lib/sync').start();
   });
 }
 

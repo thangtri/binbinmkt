@@ -3,8 +3,13 @@
   const isGoogle = ch.key === 'google';
   const editable = can('channel:edit');
   const fmt = (m, v) => (v == null ? '—' : m.decimals ? Number(v).toFixed(m.decimals) : num(v));
-  const reachLabel = isGoogle ? 'Lượt xem hồ sơ' : 'Tiếp cận';
-  const engLabel = isGoogle ? 'Gọi, chỉ đường' : 'Tương tác';
+  const showReach = !isGoogle && ch.key !== 'zalo';
+  const sourceLabel = { auto: 'Tự động', manual: 'Nhập tay' };
+  const connectHelp = {
+    facebook: 'Đăng nhập bằng tài khoản Facebook đang quản trị Page của khách sạn. Hệ thống chỉ xin quyền đọc số liệu, không đăng bài thay bạn.',
+    tiktok: 'Đăng nhập tài khoản TikTok của khách sạn và cho phép đọc thông tin hồ sơ, danh sách video.',
+    zalo: 'Đăng nhập bằng tài khoản Zalo đang là quản trị viên của OA và cấp quyền cho ứng dụng.',
+  };
 
   // Biểu đồ đường có trục, vẽ phía server
   let chart = null;
@@ -31,7 +36,7 @@
       <div>
         <h1><%= ch.name %></h1>
         <p class="sub">
-          <% if (account.url) { %><a href="<%= account.url %>" target="_blank" rel="noopener"><%= account.handle || account.display_name || account.url %></a><% } else { %><%= account.handle || account.display_name || 'Chưa nhập tài khoản' %><% } %>
+          <% if (account.url) { %><a href="<%= account.url %>" target="_blank" rel="noopener"><%= (extra.profile && extra.profile.name) || account.handle || account.display_name || 'Mở trang' %></a><% } else { %><%= account.handle || account.display_name || 'Chưa kết nối tài khoản' %><% } %>
           <span class="muted"><%= account.owner_name ? 'Phụ trách: ' + account.owner_name : 'Chưa phân công người phụ trách' %></span>
         </p>
       </div>
@@ -39,9 +44,66 @@
   </div>
   <div class="toolbar">
     <% if (can('post:create')) { %><a class="btn" href="/posts/new?channel=<%= ch.key %>"><%- icon('plus') %> Soạn bài <%= ch.name %></a><% } %>
-    <% if (account.url) { %><a class="btn btn-quiet" href="<%= account.url %>" target="_blank" rel="noopener"><%- icon('link') %> Mở trang</a><% } %>
   </div>
 </header>
+
+<%# ---------- Kết nối ---------- %>
+<section class="connect panel is-<%= conn.connected ? (conn.status === 'ok' ? 'ok' : 'warn') : 'off' %>">
+  <div class="connect-state">
+    <span class="connect-dot" aria-hidden="true"></span>
+    <div>
+      <% if (!conn.connected) { %>
+        <strong>Chưa kết nối</strong>
+        <p class="muted small">Kết nối một lần, số liệu sẽ tự cập nhật mỗi 12 giờ.</p>
+      <% } else if (conn.status === 'ok') { %>
+        <strong>Đang tự động cập nhật</strong>
+        <p class="muted small">Lần gần nhất: <%= d.dmyhm(conn.lastSyncedAt) %>. Lần tới: khoảng 12 giờ sau.</p>
+      <% } else if (conn.status === 'reconnect') { %>
+        <strong>Cần kết nối lại</strong>
+        <p class="muted small"><%= conn.error %></p>
+      <% } else { %>
+        <strong>Lần cập nhật gần nhất bị lỗi</strong>
+        <p class="muted small"><%= conn.error || 'Chưa cập nhật lần nào.' %></p>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (editable) { %>
+    <div class="connect-actions">
+      <% if (!conn.configured) { %>
+        <p class="hint">Quản trị viên cần thêm <code><%= conn.missingEnv.join('</code>, <code>') %></code> vào biến môi trường trên Hostinger. Xem mục "Kết nối kênh" trong DEPLOY.md.</p>
+      <% } else if (isGoogle) { %>
+        <form method="post" action="/channels/google/link" class="inline-form connect-link">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <label class="sr-only" for="maps-link">Link Google Maps của khách sạn</label>
+          <input id="maps-link" type="url" name="link" required value="<%= account.url || '' %>" placeholder="Dán link Google Maps, ví dụ https://maps.app.goo.gl/…">
+          <button class="btn btn-primary" type="submit"><%= conn.connected ? 'Đổi link' : 'Lưu và lấy số liệu' %></button>
+        </form>
+      <% } else if (!conn.connected || conn.status === 'reconnect') { %>
+        <form method="post" action="/channels/<%= ch.key %>/connect">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button class="btn btn-primary" type="submit"><%- icon('link') %> <%= conn.connected ? 'Kết nối lại' : 'Kết nối ' + ch.name %></button>
+        </form>
+      <% } %>
+      <% if (conn.connected && conn.configured) { %>
+        <form method="post" action="/channels/<%= ch.key %>/sync">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button class="btn" type="submit">Cập nhật ngay</button>
+        </form>
+        <form method="post" action="/channels/<%= ch.key %>/disconnect" data-confirm="Ngắt kết nối <%= ch.name %>? Số liệu đã lấy vẫn được giữ.">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button class="btn btn-quiet" type="submit">Ngắt kết nối</button>
+        </form>
+      <% } %>
+    </div>
+    <% if (conn.configured && !conn.connected) { %>
+      <p class="hint connect-help"><%= isGoogle ? 'Mở Google Maps, tìm Bin Bin Hotel, bấm Chia sẻ rồi Sao chép đường liên kết. Hệ thống tự lấy điểm, số đánh giá và đánh giá mới nhất.' : connectHelp[ch.key] %></p>
+    <% } %>
+    <% if (isGoogle && conn.connected && extra.profile && extra.profile.address) { %>
+      <p class="hint connect-help">Địa điểm đang theo dõi: <strong><%= extra.profile.name %></strong>, <%= extra.profile.address %>. Nếu sai địa điểm, dán lại link khác.</p>
+    <% } %>
+  <% } %>
+</section>
 
 <section class="kpis" aria-label="Số liệu mới nhất">
   <% for (const m of metrics) { %>
@@ -53,14 +115,46 @@
       <% } else if (m.delta) { %>
         <span class="kpi-note <%= m.delta > 0 ? 'up' : 'down' %>"><%= m.delta > 0 ? '+' : '' %><%= fmt(m, m.delta) %> so với <%= d.dm(m.prevOn) %></span>
       <% } else { %>
-        <span class="kpi-note">Ghi ngày <%= d.dm(m.on) %></span>
+        <span class="kpi-note">Cập nhật <%= d.dm(m.on) %></span>
       <% } %>
     </div>
+  <% } %>
+  <% if (ch.key === 'tiktok' && extra.profile && extra.profile.likes != null) { %>
+    <div class="kpi"><span class="kpi-label">Tổng lượt thích</span><span class="kpi-value"><%= num(extra.profile.likes) %></span><span class="kpi-note"><%= num(extra.profile.videos) %> video</span></div>
   <% } %>
 </section>
 
 <div class="detail">
   <div class="stack">
+    <%# ---------- Phân tích AI ---------- %>
+    <section class="panel ai-panel" id="ai">
+      <div class="panel-head">
+        <h2>Phân tích của AI</h2>
+        <% if (insight) { %><span class="muted small"><%= d.dmyhm(insight.created_at) %></span><% } %>
+      </div>
+      <% if (insight) { %>
+        <p class="ai-summary"><%= insight.summary %></p>
+        <div class="ai-cols">
+          <% if (insight.highlights.length) { %><div><h3>Điểm tốt</h3><ul><% for (const x of insight.highlights) { %><li><%= x %></li><% } %></ul></div><% } %>
+          <% if (insight.concerns.length) { %><div><h3>Cần chú ý</h3><ul><% for (const x of insight.concerns) { %><li><%= x %></li><% } %></ul></div><% } %>
+        </div>
+        <% if (insight.recommendations.length) { %>
+          <div class="ai-reco"><h3>Nên làm tuần này</h3><ul><% for (const x of insight.recommendations) { %><li><%= x %></li><% } %></ul></div>
+        <% } %>
+      <% } else if (!aiConfigured) { %>
+        <p class="empty">Chưa bật phân tích AI. Quản trị viên cần thêm <code>ANTHROPIC_API_KEY</code> vào biến môi trường.</p>
+      <% } else { %>
+        <p class="empty">AI tự phân tích mỗi tuần khi kênh đã có số liệu. Bạn cũng có thể chạy ngay.</p>
+      <% } %>
+      <% if (aiConfigured && editable) { %>
+        <form method="post" action="/channels/<%= ch.key %>/analyze" class="ai-run">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button class="btn btn-small" type="submit" data-busy="AI đang phân tích…"><%= insight ? 'Phân tích lại' : 'Phân tích ngay' %></button>
+          <span class="hint">Mất khoảng 20–60 giây.</span>
+        </form>
+      <% } %>
+    </section>
+
     <section class="panel">
       <div class="panel-head">
         <h2><%= chartMetric.label %> theo thời gian</h2>
@@ -84,11 +178,27 @@
       <% } else { %>
         <div class="empty-chart">
           <p><strong>Chưa đủ số liệu để vẽ biểu đồ.</strong></p>
-          <p class="muted">Ghi số liệu ít nhất 2 lần (ví dụ mỗi thứ Hai) để thấy xu hướng tăng giảm.</p>
+          <p class="muted"><%= conn.connected ? 'Hệ thống ghi số liệu mỗi ngày; biểu đồ hiện từ ngày thứ hai.' : 'Kết nối kênh để hệ thống tự ghi số liệu mỗi ngày.' %></p>
         </div>
       <% } %>
     </section>
 
+    <% if (isGoogle && extra.recentReviews && extra.recentReviews.length) { %>
+      <section class="panel">
+        <div class="panel-head"><h2>Đánh giá gần đây trên Google</h2><% if (extra.profile && extra.profile.url) { %><a href="<%= extra.profile.url %>" target="_blank" rel="noopener">Trả lời trên Google</a><% } %></div>
+        <ul class="reviews">
+          <% for (const r of extra.recentReviews) { %>
+            <li>
+              <div class="review-head"><strong><%= r.author %></strong><span class="stars" aria-label="<%= r.rating %> sao"><%= '★'.repeat(Math.round(r.rating || 0)) %><span class="stars-off"><%= '★'.repeat(5 - Math.round(r.rating || 0)) %></span></span><span class="muted small"><%= r.when %></span></div>
+              <% if (r.text) { %><p><%= r.text %></p><% } %>
+            </li>
+          <% } %>
+        </ul>
+        <p class="hint">Google chỉ cung cấp tối đa 5 đánh giá tiêu biểu qua API.</p>
+      </section>
+    <% } %>
+
+    <% if (!isGoogle) { %>
     <section class="panel">
       <div class="panel-head"><h2>Hiệu quả bài đăng, 30 ngày qua</h2><a href="/posts?channel=<%= ch.key %>&status=published">Xem bài đã đăng</a></div>
       <dl class="perf">
@@ -99,7 +209,24 @@
         <div><dt>Chia sẻ</dt><dd><%= num(perf.shares) %></dd></div>
         <div><dt>Xem trung bình mỗi bài</dt><dd><%= perf.posts ? num(Math.round(perf.views / perf.posts)) : '—' %></dd></div>
       </dl>
-      <% if (posts.length) { %>
+      <% const apiPosts = (extra.posts || []).slice(0, 8); %>
+      <% if (apiPosts.length) { %>
+        <table class="table table-compact">
+          <thead><tr><th>Bài mới nhất trên <%= ch.name %></th><% if (ch.key === 'tiktok') { %><th class="num">Xem</th><% } %><th class="num">Thích</th><th class="num">Bình luận</th><th class="num">Chia sẻ</th></tr></thead>
+          <tbody>
+            <% for (const p of apiPosts) { %>
+              <tr>
+                <td><% if (p.url) { %><a href="<%= p.url %>" target="_blank" rel="noopener"><%= p.title || 'Không có tiêu đề' %></a><% } else { %><%= p.title %><% } %><% if (p.createdAt) { %><small class="muted block"><%= d.dmy(String(p.createdAt).slice(0, 10)) %></small><% } %></td>
+                <% if (ch.key === 'tiktok') { %><td class="num"><%= num(p.views) %></td><% } %>
+                <td class="num"><%= num(p.likes) %></td>
+                <td class="num"><%= num(p.comments) %></td>
+                <td class="num"><%= num(p.shares) %></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+        <p class="hint">Bài trong lịch có link trùng với bài trên kênh sẽ được cập nhật lượt thích, bình luận, chia sẻ tự động.</p>
+      <% } else if (posts.length) { %>
         <table class="table table-compact">
           <thead><tr><th>Bài gần đây</th><th class="num">Xem</th><th class="num">Tương tác</th></tr></thead>
           <tbody>
@@ -113,22 +240,21 @@
           </tbody>
         </table>
       <% } else { %>
-        <p class="empty">Chưa có bài nào được đánh dấu đã đăng trên <%= ch.name %>. Sau khi đăng, mở bài và bấm "Đánh dấu đã đăng" để số liệu hiện ở đây.</p>
+        <p class="empty">Chưa có bài nào. <%= conn.connected ? 'Bài mới trên kênh sẽ hiện ở đây sau lần cập nhật tới.' : 'Kết nối kênh để thấy bài và tương tác.' %></p>
       <% } %>
     </section>
+    <% } %>
 
     <section class="panel panel-flush">
-      <div class="panel-head pad">
-        <h2>Lịch sử số liệu</h2>
-        <% if (editable) { %><a href="#ghi-so-lieu">Ghi số liệu mới</a><% } %>
-      </div>
+      <div class="panel-head pad"><h2>Lịch sử số liệu</h2></div>
       <% if (!stats.length) { %>
         <p class="empty pad">Chưa có số liệu nào.</p>
       <% } else { %>
         <table class="table table-rows">
           <thead><tr><th>Ngày</th>
             <% if (isGoogle) { %><th class="num">Điểm</th><th class="num">Đánh giá</th><% } else { %><th class="num">Theo dõi</th><% } %>
-            <th class="num"><%= reachLabel %></th><th class="num"><%= engLabel %></th><th>Ghi chú</th><% if (editable) { %><th><span class="sr-only">Xoá</span></th><% } %></tr></thead>
+            <% if (showReach) { %><th class="num">Tiếp cận</th><th class="num">Tương tác</th><% } %>
+            <th>Nguồn</th><% if (editable) { %><th><span class="sr-only">Xoá</span></th><% } %></tr></thead>
           <tbody>
           <% for (const s of stats.slice(0, 20)) { %>
             <tr>
@@ -139,9 +265,11 @@
               <% } else { %>
                 <td class="num"><%= s.followers != null ? num(s.followers) : '—' %></td>
               <% } %>
-              <td class="num"><%= s.reach != null ? num(s.reach) : '—' %></td>
-              <td class="num"><%= s.engagement != null ? num(s.engagement) : '—' %></td>
-              <td><%= s.note || '' %><% if (s.user_name) { %><small class="muted block">Nhập bởi <%= s.user_name %></small><% } %></td>
+              <% if (showReach) { %>
+                <td class="num"><%= s.reach != null ? num(s.reach) : '—' %></td>
+                <td class="num"><%= s.engagement != null ? num(s.engagement) : '—' %></td>
+              <% } %>
+              <td><%= sourceLabel[s.source] || 'Nhập tay' %><% if (s.note) { %><small class="muted block"><%= s.note %></small><% } %></td>
               <% if (editable) { %>
                 <td class="right">
                   <form method="post" action="/channels/<%= ch.key %>/stats/<%= s.id %>/delete" data-confirm="Xoá dòng số liệu ngày <%= d.dmy(s.recorded_on) %>?">
@@ -176,37 +304,18 @@
       <p class="hint"><%= ch.tips %></p>
     </section>
 
-    <% if (editable) { %>
-      <section class="panel stack" id="ghi-so-lieu">
-        <h2>Ghi số liệu mới</h2>
-        <p class="hint">Lấy số trong <%= isGoogle ? 'Google Business Profile, mục Hiệu suất' : ch.key === 'zalo' ? 'trang quản trị Zalo OA' : ch.key === 'tiktok' ? 'TikTok Studio, mục Phân tích' : 'Meta Business Suite, mục Thông tin chi tiết' %>. Ô nào chưa có số thì để trống.</p>
-        <form method="post" action="/channels/<%= ch.key %>/stats" class="stack">
-          <input type="hidden" name="_csrf" value="<%= csrf %>">
-          <label class="field"><span>Ngày</span><input type="date" name="recorded_on" value="<%= today %>" required></label>
-          <div class="row-2">
-            <% if (isGoogle) { %>
-              <label class="field"><span>Điểm đánh giá</span><input type="number" min="0" max="5" step="0.1" name="rating" placeholder="4,6"></label>
-              <label class="field"><span>Số đánh giá</span><input type="number" min="0" name="reviews" inputmode="numeric"></label>
-            <% } else { %>
-              <label class="field field-wide"><span>Người theo dõi</span><input type="number" min="0" name="followers" inputmode="numeric"></label>
-            <% } %>
-            <label class="field"><span><%= reachLabel %></span><input type="number" min="0" name="reach" inputmode="numeric"></label>
-            <label class="field"><span><%= engLabel %></span><input type="number" min="0" name="engagement" inputmode="numeric"></label>
-          </div>
-          <label class="field"><span>Ghi chú</span><input type="text" name="note" maxlength="255" placeholder="Ví dụ: chạy quảng cáo 500.000đ"></label>
-          <button class="btn btn-primary" type="submit">Lưu số liệu</button>
-        </form>
-      </section>
-    <% } %>
-
     <section class="panel stack">
       <h2>Thông tin tài khoản</h2>
       <% if (editable) { %>
         <form method="post" action="/channels/<%= ch.key %>/account" class="stack">
           <input type="hidden" name="_csrf" value="<%= csrf %>">
           <label class="field"><span>Tên hiển thị</span><input type="text" name="display_name" value="<%= account.display_name || '' %>"></label>
-          <label class="field"><span><%= isGoogle ? 'Tên trên Maps' : 'Tên tài khoản' %></span><input type="text" name="handle" value="<%= account.handle || '' %>" placeholder="<%= ch.key === 'tiktok' ? '@binbinhotel' : '' %>"></label>
-          <label class="field"><span>Đường dẫn</span><input type="url" name="url" value="<%= account.url || '' %>" placeholder="https://"></label>
+          <% if (!isGoogle) { %>
+            <label class="field"><span>Tên tài khoản</span><input type="text" name="handle" value="<%= account.handle || '' %>" placeholder="<%= ch.key === 'tiktok' ? '@binbinhotel' : '' %>"></label>
+            <label class="field"><span>Đường dẫn</span><input type="url" name="url" value="<%= account.url || '' %>" placeholder="https://"></label>
+          <% } else { %>
+            <input type="hidden" name="url" value="<%= account.url || '' %>">
+          <% } %>
           <label class="field"><span>Người phụ trách</span>
             <select name="owner_id"><option value="">Chưa phân công</option>
               <% for (const u of users) { %><option value="<%= u.id %>"<%= Number(account.owner_id) === Number(u.id) ? ' selected' : '' %>><%= u.name %></option><% } %>
@@ -223,6 +332,31 @@
         </dl>
       <% } %>
     </section>
+
+    <% if (editable) { %>
+      <details class="panel manual">
+        <summary>Nhập số liệu thủ công</summary>
+        <p class="hint">Chỉ dùng khi kênh chưa kết nối được hoặc cần bổ sung số liệu cũ. Số liệu tự động vẫn được ghi riêng.</p>
+        <form method="post" action="/channels/<%= ch.key %>/stats" class="stack">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <label class="field"><span>Ngày</span><input type="date" name="recorded_on" value="<%= today %>" required></label>
+          <div class="row-2">
+            <% if (isGoogle) { %>
+              <label class="field"><span>Điểm đánh giá</span><input type="number" min="0" max="5" step="0.1" name="rating"></label>
+              <label class="field"><span>Số đánh giá</span><input type="number" min="0" name="reviews" inputmode="numeric"></label>
+            <% } else { %>
+              <label class="field field-wide"><span>Người theo dõi</span><input type="number" min="0" name="followers" inputmode="numeric"></label>
+              <% if (showReach) { %>
+                <label class="field"><span>Tiếp cận</span><input type="number" min="0" name="reach" inputmode="numeric"></label>
+                <label class="field"><span>Tương tác</span><input type="number" min="0" name="engagement" inputmode="numeric"></label>
+              <% } %>
+            <% } %>
+          </div>
+          <label class="field"><span>Ghi chú</span><input type="text" name="note" maxlength="255"></label>
+          <button class="btn" type="submit">Lưu số liệu</button>
+        </form>
+      </details>
+    <% } %>
   </aside>
 </div>
 <%- include('../partials/bottom') %>

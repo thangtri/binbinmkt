@@ -41,4 +41,18 @@ module.exports = {
     webhookSecret: process.env.BREVO_WEBHOOK_SECRET || '',
   },
   uploadDir: path.resolve(root, process.env.UPLOAD_DIR || './uploads'),
+  // Khoá mã hoá token kết nối kênh; mặc định suy ra từ SESSION_SECRET
+  encryptionKey: process.env.ENCRYPTION_KEY || sessionSecret || 'dev-only-secret-not-for-production',
+  google: { placesApiKey: process.env.GOOGLE_PLACES_API_KEY || '' },
+  facebook: {
+    appId: process.env.FACEBOOK_APP_ID || '',
+    appSecret: process.env.FACEBOOK_APP_SECRET || '',
+    graphVersion: process.env.FACEBOOK_GRAPH_VERSION || 'v23.0',
+  },
+  tiktok: { clientKey: process.env.TIKTOK_CLIENT_KEY || '', clientSecret: process.env.TIKTOK_CLIENT_SECRET || '' },
+  zalo: { appId: process.env.ZALO_APP_ID || '', appSecret: process.env.ZALO_APP_SECRET || '' },
+  ai: {
+    apiKey: process.env.ANTHROPIC_API_KEY || '',
+    model: process.env.AI_MODEL || 'claude-opus-5-5',
+  },
 };

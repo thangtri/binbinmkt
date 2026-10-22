@@ -1,6 +1,6 @@
 <%- include('../partials/top') %>
 <header class="page-head">
-  <div><h1>Kênh mạng xã hội</h1><p class="sub">Số liệu do team nhập từ trang quản trị của từng kênh. Hiệu quả bài tính trong 30 ngày gần nhất.</p></div>
+  <div><h1>Kênh mạng xã hội</h1><p class="sub">Số liệu tự động lấy từ từng kênh mỗi 12 giờ, AI phân tích mỗi tuần. Hiệu quả bài tính trong 30 ngày gần nhất.</p></div>
 </header>
 
 <div class="channel-grid">
@@ -28,6 +28,10 @@
         <div><dt>Tương tác</dt><dd><%= num(r.perf.interactions) %></dd></div>
         <div><dt>Sắp đăng</dt><dd><%= r.upcoming %></dd></div>
       </dl>
+      <span class="cc-sync is-<%= r.conn.connected ? (r.conn.status === 'ok' ? 'ok' : 'warn') : 'off' %>">
+        <span class="connect-dot" aria-hidden="true"></span>
+        <%= !r.conn.connected ? 'Chưa kết nối' : r.conn.status === 'ok' ? 'Tự động, cập nhật ' + d.dmyhm(r.conn.lastSyncedAt) : r.conn.status === 'reconnect' ? 'Cần kết nối lại' : 'Lỗi khi cập nhật' %>
+      </span>
       <span class="cc-foot"><%= r.account && r.account.owner_name ? 'Phụ trách: ' + r.account.owner_name : 'Chưa phân công người phụ trách' %></span>
     </a>
   <% } %>

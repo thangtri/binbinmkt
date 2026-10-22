@@ -17,10 +17,20 @@
     });
   }
 
-  // Xác nhận trước khi xoá / gửi
+  // Xác nhận trước khi xoá / gửi; nút có data-busy đổi chữ và khoá khi đang chạy
   document.addEventListener('submit', function (e) {
     var msg = e.target.getAttribute('data-confirm');
-    if (msg && !window.confirm(msg)) e.preventDefault();
+    if (msg && !window.confirm(msg)) {
+      e.preventDefault();
+      return;
+    }
+    var busy = e.target.querySelector('[data-busy]');
+    if (busy) {
+      busy.textContent = busy.getAttribute('data-busy');
+      setTimeout(function () {
+        busy.disabled = true;
+      }, 0);
+    }
   });
 
   // Bộ lọc tự gửi khi đổi lựa chọn

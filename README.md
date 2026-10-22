@@ -10,11 +10,11 @@
 | **Lịch đăng bài** | *Bảng kênh*: 2 tuần, mỗi kênh một hàng, sự kiện là các thanh kéo dài qua nhiều ngày; kéo thả bài sang ngày khác. *Lịch tháng*: lọc theo kênh. Bấm dấu + ở một ô để soạn bài cho đúng ngày và kênh đó. |
 | **Bài đăng** | Soạn bài theo kênh (định dạng, gợi ý, đếm ký tự), đính kèm ảnh/video tới 50 MB, gắn với sự kiện. Quy trình: Nháp → Chờ duyệt → Đã duyệt → Đã đăng. Quản trị viên duyệt hoặc trả về kèm góp ý. Nút "Sao chép để đăng", nhân bản bài sang kênh khác, ghi link và số liệu (xem, thích, bình luận, chia sẻ) sau khi đăng. |
 | **Sự kiện** | Lịch lễ, Tết Việt Nam có sẵn; thêm mùa du lịch, ưu đãi của khách sạn, sự kiện địa phương. Sự kiện có thể lặp lại hằng năm. |
-| **Kênh** | Thông tin tài khoản, người phụ trách, ghi chú; ghi số liệu định kỳ (người theo dõi, tiếp cận, tương tác; với Google Maps là điểm và số đánh giá) kèm biểu đồ; tổng hợp hiệu quả 30 ngày. |
+| **Kênh** | Tự động lấy số liệu: dán link Google Maps (điểm, số đánh giá, đánh giá mới); kết nối Facebook Page, TikTok, Zalo OA (người theo dõi, tiếp cận, tương tác, số liệu từng bài). Cập nhật mỗi 12 giờ; AI (Claude) viết nhận xét và đề xuất mỗi tuần. |
 | **Email marketing** | Danh bạ (thêm tay, nhập/xuất CSV, gắn nhóm), chiến dịch HTML với `{{ten}}`, xem trước, gửi thử, gửi theo nhóm; thống kê nhận/mở/nhấp/trả về qua webhook Brevo; trang huỷ nhận email cho khách. |
 | **Tài khoản** | 3 vai trò: Quản trị, Biên tập, Chỉ xem. Quản trị viên tạo tài khoản, đổi vai trò, khoá tài khoản, đặt lại mật khẩu. |
 
-Các kênh mạng xã hội đang quản lý **thủ công**: app nhắc lịch, lưu nội dung và số liệu; team tự bấm đăng trên từng nền tảng. Code đã chia sẵn theo kênh (`src/lib/constants.js`, `src/routes/posts.js`) để sau này cắm API đăng tự động.
+Đăng bài lên các kênh vẫn do team tự bấm đăng; app lo lịch, duyệt nội dung, lấy số liệu và phân tích. Cách lấy khoá API cho từng kênh xem trong [DEPLOY.md](DEPLOY.md), mục 5.
 
 ## Chạy thử trên máy
 
