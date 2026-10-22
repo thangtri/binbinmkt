@@ -724,3 +724,24 @@ body.legal-page {
   padding-top: 16px;
   border-top: 1px solid var(--line);
 }
+
+/* Các bước cấu hình khi kênh chưa có khoá */
+.setup-steps {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--sunk);
+  font-size: 0.9rem;
+}
+.setup-steps p {
+  margin: 0 0 6px;
+}
+.setup-steps ol {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+.setup-steps li {
+  margin-bottom: 4px;
+}
+.setup-steps code {
+  overflow-wrap: anywhere;
+}

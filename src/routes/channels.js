@@ -332,6 +332,7 @@ router.get(
       account,
       extra: parseExtra(account),
       conn: await connection(ch, account),
+      oauthCallback: redirectUri(ch.key),
       insight: await ai.latest(ch.key),
       aiConfigured: ai.isConfigured(),
       stats,

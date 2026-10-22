@@ -71,7 +71,7 @@
   <% if (editable) { %>
     <div class="connect-actions">
       <% if (!conn.configured) { %>
-        <p class="hint">Quản trị viên cần thêm <code><%= conn.missingEnv.join('</code>, <code>') %></code> vào biến môi trường trên Hostinger. Xem mục "Kết nối kênh" trong DEPLOY.md.</p>
+        <button class="btn btn-primary" type="button" disabled><%- icon('link') %> <%= isGoogle ? 'Lưu và lấy số liệu' : 'Kết nối ' + ch.name %></button>
       <% } else if (isGoogle) { %>
         <form method="post" action="/channels/google/link" class="inline-form connect-link">
           <input type="hidden" name="_csrf" value="<%= csrf %>">
@@ -96,6 +96,20 @@
         </form>
       <% } %>
     </div>
+    <% if (!conn.configured) { %>
+      <div class="setup-steps connect-help">
+        <p><strong>Nút Kết nối sẽ bấm được sau khi máy chủ có khoá của <%= ch.name %>.</strong> Các bước:</p>
+        <ol>
+          <li><%= isGoogle ? 'Tạo API key cho Places API (New) trên Google Cloud.' : ch.key === 'facebook' ? 'Tạo ứng dụng trên developers.facebook.com.' : ch.key === 'tiktok' ? 'Tạo ứng dụng trên developers.tiktok.com (có Login Kit và Display API).' : 'Tạo ứng dụng trên developers.zalo.me và liên kết với OA.' %></li>
+          <% if (!isGoogle) { %><li>Khai báo địa chỉ quay về: <code><%= oauthCallback %></code></li><% } %>
+          <li>Thêm vào biến môi trường trên Hostinger (hoặc file <code>.env</code> khi chạy thử):
+            <% conn.missingEnv.forEach((name) => { %><code><%= name %></code> <% }) %>
+          </li>
+          <li>Khởi động lại website, quay lại trang này và bấm <%= isGoogle ? 'Lưu và lấy số liệu' : 'Kết nối' %>.</li>
+        </ol>
+        <p class="muted">Hướng dẫn chi tiết từng bước: mục 5 trong DEPLOY.md.</p>
+      </div>
+    <% } %>
     <% if (conn.configured && !conn.connected) { %>
       <p class="hint connect-help"><%= isGoogle ? 'Mở Google Maps, tìm Bin Bin Hotel, bấm Chia sẻ rồi Sao chép đường liên kết. Hệ thống tự lấy điểm, số đánh giá và đánh giá mới nhất.' : connectHelp[ch.key] %></p>
     <% } %>
