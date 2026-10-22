@@ -10,7 +10,11 @@ function isLive() {
 }
 
 // Bọc nội dung chiến dịch trong khung email có chân trang và link huỷ đăng ký
-function renderEmail({ subject, preheader, bodyHtml, unsubscribeUrl }) {
+function renderEmail({ subject, preheader, bodyHtml, unsubscribeUrl, transactional = false }) {
+  const footer = transactional
+    ? 'Email tự động từ Bin Bin Marketing, công cụ nội bộ của Bin Bin Hotel.'
+    : `Bạn nhận email này vì đã là khách hoặc đã đăng ký nhận tin từ Bin Bin Hotel.<br>
+<a href="${escapeHtml(unsubscribeUrl)}" style="color:#777777;">Huỷ nhận email</a>`;
   return `<!doctype html>
 <html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(subject)}</title></head>
 <body style="margin:0;padding:0;background:#f2f2f4;font-family:Arial,Helvetica,sans-serif;color:#2a2122;">
@@ -20,8 +24,7 @@ function renderEmail({ subject, preheader, bodyHtml, unsubscribeUrl }) {
 <tr><td style="background:#ed3237;padding:18px 28px;color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:.5px;">Bin Bin Hotel</td></tr>
 <tr><td style="padding:28px;font-size:15px;line-height:1.6;">${bodyHtml || ''}</td></tr>
 <tr><td style="padding:18px 28px;border-top:1px solid #eeeeee;font-size:12px;line-height:1.5;color:#777777;">
-Bạn nhận email này vì đã là khách hoặc đã đăng ký nhận tin từ Bin Bin Hotel.<br>
-<a href="${escapeHtml(unsubscribeUrl)}" style="color:#777777;">Huỷ nhận email</a>
+${footer}
 </td></tr></table></td></tr></table></body></html>`;
 }
 

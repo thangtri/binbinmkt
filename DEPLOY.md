@@ -81,7 +81,7 @@ Lấy được: điểm đánh giá, số đánh giá, tối đa 5 đánh giá t
 
 ### Facebook Page
 1. developers.facebook.com → **My Apps → Create app**. Ở bước chọn trường hợp sử dụng, chọn mục quản lý Page (hoặc **Other → Business** nếu không có).
-2. Trong phần tuỳ chỉnh trường hợp sử dụng, thêm quyền `pages_show_list`, `pages_read_engagement`, `read_insights`.
+2. Trong phần tuỳ chỉnh trường hợp sử dụng, thêm quyền `pages_show_list`, `pages_read_engagement`, `read_insights` và `pages_manage_posts` (quyền cuối dùng để tự đăng bài).
 3. Mở cài đặt **Facebook Login** (không chọn "Login for Business", loại này cần cấu hình riêng) → **Valid OAuth Redirect URIs** → dán redirect URI ở trên.
 4. **App settings → Basic**: điền Privacy Policy URL `https://<tên-miền-app>/chinh-sach-bao-mat`, Terms of Service URL `https://<tên-miền-app>/dieu-khoan`; sao chép App ID và App Secret.
 5. Đặt `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`.
@@ -90,13 +90,18 @@ Khi app còn ở chế độ Development, chỉ người có vai trò trong app 
 
 Lấy được: người theo dõi, tiếp cận 28 ngày (nếu Meta còn cung cấp chỉ số này), thích/bình luận/chia sẻ của bài 28 ngày gần nhất.
 
+Tự đăng: bài chữ, album tới 30 ảnh, hoặc một video (Facebook không gộp video với ảnh trong cùng bài, nên khi có video thì chỉ đăng video).
+
 ### TikTok
 1. developers.tiktok.com → **Manage apps → Create app**, thêm **Login Kit** và **Display API**. Điền Terms of Service URL `https://<tên-miền-app>/dieu-khoan` và Privacy Policy URL `https://<tên-miền-app>/chinh-sach-bao-mat`.
-2. Scope: `user.info.basic`, `user.info.profile`, `user.info.stats`, `video.list`; khai báo redirect URI.
+2. Scope: `user.info.basic`, `user.info.profile`, `user.info.stats`, `video.list`, `video.publish`; khai báo redirect URI. Thêm sản phẩm **Content Posting API** và bật **Direct Post**.
+   Để đăng bài ảnh, TikTok tự tải ảnh từ website của bạn: trong mục **URL properties**, xác minh tiền tố `https://<tên-miền-app>/m/`.
 3. Gửi app để TikTok duyệt (thường vài ngày). Trong lúc chờ, dùng chế độ Sandbox và thêm tài khoản TikTok của khách sạn làm người dùng thử.
 4. Đặt `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`.
 
 Lấy được: người theo dõi, tổng lượt thích, số video, lượt xem/thích/bình luận/chia sẻ của 20 video mới nhất.
+
+Tự đăng: một video (tối đa 50 MB) hoặc bài ảnh tới 35 ảnh JPG/WebP (TikTok không nhận PNG). **Khi app chưa được TikTok duyệt, bài tự đăng ở chế độ riêng tư (chỉ mình bạn xem)**; sau khi được duyệt mới đăng công khai.
 
 ### Zalo OA
 1. developers.zalo.me → tạo ứng dụng → **Official Account** → liên kết với OA của khách sạn, khai báo **Callback URL** là redirect URI ở trên.
@@ -110,11 +115,23 @@ Lấy được: số người quan tâm OA.
 
 Mỗi lần phân tích một kênh tốn khoảng 1.000–5.000 đồng tiền API tuỳ lượng dữ liệu; mặc định chạy mỗi tuần một lần cho mỗi kênh đã kết nối.
 
+### Tự đăng bài
+- Bài **đã duyệt** và có tick "Tự đăng lên Facebook, TikTok khi đến giờ" sẽ được hệ thống đăng trong vòng 1 phút sau giờ hẹn, lên các kênh đã kết nối.
+- Google Maps và Zalo OA chưa tự đăng được (cần quyền API riêng): team vẫn đăng tay rồi dán link vào bảng "Trên các kênh". Khi cả 4 kênh đều có link, bài tự chuyển sang "Đã đăng".
+- Nếu đã kết nối Facebook/TikTok **trước** khi có tính năng tự đăng, bấm **Kết nối lại** để cấp thêm quyền đăng bài.
+- Kênh bị lỗi hiện lý do trong trang bài; sửa xong bấm "Đăng ngay" hoặc "Thử lại".
+
 ### Lưu ý
 - Token kết nối được mã hoá bằng `ENCRYPTION_KEY` (hoặc `SESSION_SECRET` nếu để trống). Đổi khoá này thì phải bấm Kết nối lại các kênh.
 - TikTok và Zalo tự làm mới token; nếu không dùng app quá lâu (Zalo khoảng 3 tháng, TikTok 1 năm), trang kênh sẽ báo "Cần kết nối lại".
 - Bài trong lịch đã đánh dấu "Đã đăng" và có link trùng với bài trên Facebook/TikTok sẽ được cập nhật lượt thích, bình luận, chia sẻ (và lượt xem với TikTok) mỗi lần đồng bộ.
 - Mục "Nhập số liệu thủ công" vẫn còn ở cuối trang kênh, chỉ dùng khi một kênh chưa kết nối được.
+
+### Quên mật khẩu
+Trang đăng nhập có link "Quên mật khẩu?". Email đặt lại gửi qua Brevo, nên cần cấu hình Brevo (mục 4) thì người dùng mới nhận được email. Khi chưa có Brevo, link đặt lại chỉ được ghi vào log máy chủ.
+
+### Thông tin khách sạn cho AI
+Quản trị viên vào mục **Thông tin khách sạn** điền địa chỉ, hotline, Zalo, link đặt phòng, điểm mạnh, giọng văn. AI dùng phần này khi viết bài ("Nhờ AI viết bài" trong trang soạn bài) và khi gợi ý bài cho sự kiện ("Gợi ý bài bằng AI" trong trang Sự kiện).
 
 ## 6. Cập nhật về sau
 

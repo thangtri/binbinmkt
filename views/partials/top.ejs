@@ -9,6 +9,7 @@
     { href: '/email/campaigns', label: 'Email marketing', icon: 'mail', match: (p) => p.startsWith('/email') },
   ];
   if (user && user.role === 'admin') nav.push({ href: '/users', label: 'Tài khoản', icon: 'users', match: (p) => p.startsWith('/users') });
+  if (user && user.role === 'admin') nav.push({ href: '/settings', label: 'Thông tin khách sạn', icon: 'key', match: (p) => p.startsWith('/settings') });
   const roleLabel = user ? C.ROLES[user.role].label : '';
 %>
 <body>

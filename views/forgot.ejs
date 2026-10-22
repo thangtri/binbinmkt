@@ -1,0 +1,32 @@
+<%- include('partials/head') %>
+<body class="auth">
+<aside class="auth-art<%= hotelPhoto ? ' has-photo' : '' %>"<%- hotelPhoto ? ` style="background-image:url('${hotelPhoto}')"` : '' %>>
+  <% if (!hotelPhoto) { %><img class="auth-monogram" src="/public/img/logo.png" alt=""><% } %>
+  <img class="auth-logo" src="/public/img/logo.png" alt="Bin Bin Hotel" width="88" height="88">
+  <h2>Lấy lại quyền truy cập</h2>
+  <p>Link đặt mật khẩu mới sẽ được gửi tới email của tài khoản.</p>
+</aside>
+<main class="auth-panel">
+  <div class="login-form">
+    <h1>Quên mật khẩu</h1>
+    <% if (sent) { %>
+      <p class="flash flash-success" role="status">Nếu tài khoản tồn tại, một email có link đặt mật khẩu mới vừa được gửi. Link có hiệu lực trong 60 phút.</p>
+      <p>Không thấy email? Kiểm tra mục Thư rác, hoặc nhờ quản trị viên đặt lại mật khẩu trong mục Tài khoản.</p>
+      <p><a class="btn btn-block" href="/login">Về trang đăng nhập</a></p>
+    <% } else { %>
+      <p class="lead">Nhập tên đăng nhập hoặc email của bạn.</p>
+      <% if (error) { %><p class="field-error" role="alert"><%= error %></p><% } %>
+      <form method="post" action="/forgot" class="stack">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <label class="field">
+          <span>Tên đăng nhập hoặc email</span>
+          <input type="text" name="username" value="<%= value %>" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+        </label>
+        <button class="btn btn-primary btn-block" type="submit">Gửi link đặt lại</button>
+      </form>
+      <p class="hint"><a href="/login">Quay lại đăng nhập</a></p>
+    <% } %>
+  </div>
+</main>
+</body>
+</html>

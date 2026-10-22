@@ -455,3 +455,238 @@ body.auth {
 .cc-value.muted {
   color: var(--ink-3);
 }
+
+/* Nhiều ảnh trong một bài */
+.media-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+.media-item {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--sunk);
+  border: 1px solid var(--line);
+}
+.media-item img,
+.media-item video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+.media-num {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(20, 30, 50, 0.72);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.media-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+}
+.media-tools .icon-btn {
+  width: 30px;
+  height: 30px;
+}
+.media-remove {
+  margin-left: auto;
+  font-size: 0.82rem;
+}
+.media-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.media-preview img,
+.media-preview video {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin: 12px 0 8px;
+}
+.gallery-one {
+  grid-template-columns: minmax(0, 520px);
+}
+.gallery figure {
+  position: relative;
+  margin: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--sunk);
+}
+.gallery img,
+.gallery video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+.gallery-one img,
+.gallery-one video {
+  aspect-ratio: auto;
+  max-height: 480px;
+}
+.gallery figcaption {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(20, 30, 50, 0.72);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.gallery-actions {
+  margin: 0 0 8px;
+}
+
+/* Thông tin khách sạn */
+.settings-form {
+  max-width: 980px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+/* AI viết bài */
+.ai-writer {
+  border-radius: 14px;
+  background: linear-gradient(135deg, #eef6ff, #fff6f6);
+  border: 1px solid var(--line);
+  padding: 12px 16px;
+}
+.ai-writer summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--sky-ink);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ai-writer[open] summary {
+  margin-bottom: 12px;
+}
+.ai-writer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ai-writer-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.ai-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+.ai-option {
+  background: var(--paper);
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ai-option-title {
+  margin: 0;
+  font-weight: 700;
+}
+.ai-option-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+  max-height: 220px;
+  overflow: auto;
+}
+.ai-option .btn {
+  align-self: flex-start;
+  margin-top: auto;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .ai-writer {
+    background: #1b2538;
+  }
+}
+
+/* Ý tưởng AI cho sự kiện */
+.ideas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+.idea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.idea .caption {
+  white-space: pre-wrap;
+  font-size: 0.92rem;
+  margin: 0;
+}
+.idea form {
+  margin-top: auto;
+}
+
+/* Trạng thái tự đăng trên từng kênh */
+.pub {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--sunk);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.pub-done {
+  background: var(--green-tint);
+  color: var(--green);
+}
+.pub-wait {
+  background: var(--amber-tint);
+  color: var(--amber);
+}
+.pub-fail {
+  background: var(--red-tint);
+  color: var(--red-deep);
+}
+.pub-state small {
+  max-width: 260px;
+  margin-top: 4px;
+}

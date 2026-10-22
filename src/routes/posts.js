@@ -3,6 +3,12 @@ const db = require('../db');
 const dates = require('../lib/dates');
 const { CHANNELS, POST_FORMATS, STATUSES } = require('../lib/constants');
 const postChannels = require('../lib/post-channels');
+const media = require('../lib/media');
+const ai = require('../lib/ai');
+const publisher = require('../lib/publisher');
+const { pipeZip } = require('../lib/zip');
+const config = require('../config');
+const path = require('path');
 const { can, requirePerm } = require('../lib/auth');
 const upload = require('../lib/upload');
 const { h, flash, logActivity, str, int, safeUrl } = require('../lib/util');
@@ -61,6 +67,7 @@ function readForm(body) {
     scheduled_at: date ? `${date} ${time}:00` : null,
     event_id: int(body.event_id) || null,
     notes: str(body.notes, 5000),
+    auto_publish: body.auto_publish ? 1 : 0,
   };
 }
 
@@ -113,13 +120,67 @@ router.get(
       title: '',
       format: POST_FORMATS[0],
       caption: '',
-      hashtags: '#BinBinHotel',
+      hashtags: (await require('../lib/settings').all()).hashtags || '',
       scheduled_at: dates.isDate(req.query.date) ? `${req.query.date} 09:00:00` : null,
       event_id: int(req.query.event) || null,
       notes: '',
       status: 'draft',
+      auto_publish: 1,
     };
-    res.render('posts/form', { title: 'Soạn bài mới', post, events: await eventOptions(), error: null });
+    res.render('posts/form', { title: 'Soạn bài mới', post, events: await eventOptions(), aiReady: ai.isConfigured(), error: null });
+  })
+);
+
+// AI viết 3 phương án nội dung từ ý chính (gọi từ form soạn bài)
+router.post(
+  '/ai/draft',
+  requirePerm('post:create'),
+  h(async (req, res) => {
+    const brief = str(req.body.brief, 2000);
+    if (!brief) return res.status(400).json({ error: 'Hãy nhập ý chính của bài.' });
+    const ev = int(req.body.event_id) ? await db.get('SELECT title FROM events WHERE id = ?', [int(req.body.event_id)]) : null;
+    try {
+      const options = await ai.writePost({
+        brief,
+        tone: str(req.body.tone, 100),
+        format: str(req.body.format, 40),
+        eventTitle: ev?.title,
+        current: str(req.body.current, 3000),
+      });
+      await logActivity(req.user, 'post.ai', 'post', null, brief.slice(0, 120));
+      res.json({ options });
+    } catch (err) {
+      res.status(502).json({ error: err.message });
+    }
+  })
+);
+
+// Tạo bài nháp từ ý tưởng AI gợi ý cho sự kiện
+router.post(
+  '/from-idea',
+  requirePerm('post:create'),
+  h(async (req, res) => {
+    const date = dates.isDate(req.body.date) ? req.body.date : null;
+    const now = dates.now();
+    const r = await db.run(
+      `INSERT INTO posts (title, channel, format, caption, hashtags, scheduled_at, status, event_id, author_id, created_at, updated_at)
+       VALUES (?, 'all', ?, ?, ?, ?, 'draft', ?, ?, ?, ?)`,
+      [
+        str(req.body.title, 200) || 'Bài từ ý tưởng AI',
+        POST_FORMATS.includes(req.body.format) ? req.body.format : POST_FORMATS[0],
+        str(req.body.caption, 60000),
+        str(req.body.hashtags, 2000),
+        date ? `${date} 09:00:00` : null,
+        int(req.body.event_id) || null,
+        req.user.id,
+        now,
+        now,
+      ]
+    );
+    await postChannels.ensure(r.insertId);
+    await logActivity(req.user, 'post.create', 'post', r.insertId, `${str(req.body.title, 120)} (ý tưởng AI)`);
+    flash(req, 'success', 'Đã tạo bài nháp từ ý tưởng. Thêm ảnh, kiểm tra nội dung rồi gửi duyệt.');
+    res.redirect(`/posts/${r.insertId}/edit`);
   })
 );
 
@@ -134,23 +195,24 @@ async function afterSave(req, id, intent, wasStatus) {
 router.post(
   '/',
   requirePerm('post:create'),
-  upload.single('media'),
+  upload.many('media'),
   h(async (req, res) => {
     const p = readForm(req.body);
     const intent = req.body.intent;
     const error = validate(p, intent);
     if (error) {
-      if (req.file) upload.remove(upload.relPath(req.file));
+      for (const f of req.files || []) upload.remove(upload.relPath(f));
       return res.status(400).render('posts/form', { title: 'Soạn bài mới', post: { ...p, status: 'draft' }, events: await eventOptions(), error });
     }
     const now = dates.now();
     const r = await db.run(
-      `INSERT INTO posts (title, channel, format, caption, hashtags, media_path, scheduled_at, status, event_id, author_id, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)`,
-      [p.title, 'all', p.format, p.caption, p.hashtags, req.file ? upload.relPath(req.file) : null, p.scheduled_at, p.event_id, req.user.id, p.notes, now, now]
+      `INSERT INTO posts (title, channel, format, caption, hashtags, media_path, scheduled_at, status, event_id, author_id, notes, auto_publish, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)`,
+      [p.title, 'all', p.format, p.caption, p.hashtags, null, p.scheduled_at, p.event_id, req.user.id, p.notes, p.auto_publish, now, now]
     );
     await afterSave(req, r.insertId, intent, 'draft');
     await postChannels.ensure(r.insertId);
+    await media.add(r.insertId, req.files);
     await logActivity(req.user, 'post.create', 'post', r.insertId, p.title);
     flash(req, 'success', intent === 'submit' ? 'Đã lưu và gửi duyệt.' : intent === 'approve' ? 'Đã lưu và duyệt bài.' : 'Đã lưu bản nháp.');
     res.redirect(`/posts/${r.insertId}`);
@@ -165,6 +227,8 @@ router.get(
       title: post.title,
       post,
       channels: await postChannels.list(post.id),
+      mediaList: await media.list(post.id),
+      autoChannels: publisher.AUTO,
       canEdit: canEdit(req.user, post),
       canDelete: canDelete(req.user, post),
     });
@@ -176,13 +240,13 @@ router.get(
   h(async (req, res) => {
     const post = await load(req.params.id);
     if (!canEdit(req.user, post)) return requirePerm('__never__')(req, res);
-    res.render('posts/form', { title: 'Sửa bài', post, events: await eventOptions(), error: null });
+    res.render('posts/form', { title: 'Sửa bài', post, mediaList: await media.list(post.id), events: await eventOptions(), aiReady: ai.isConfigured(), error: null });
   })
 );
 
 router.post(
   '/:id',
-  upload.single('media'),
+  upload.many('media'),
   h(async (req, res) => {
     const post = await load(req.params.id);
     if (!canEdit(req.user, post)) return requirePerm('__never__')(req, res);
@@ -190,22 +254,19 @@ router.post(
     const intent = req.body.intent;
     const error = validate(p, intent);
     if (error) {
-      if (req.file) upload.remove(upload.relPath(req.file));
-      return res.status(400).render('posts/form', { title: 'Sửa bài', post: { ...post, ...p }, events: await eventOptions(), error });
-    }
-    let media = post.media_path;
-    if (req.file || req.body.remove_media) {
-      upload.remove(media);
-      media = req.file ? upload.relPath(req.file) : null;
+      for (const f of req.files || []) upload.remove(upload.relPath(f));
+      return res.status(400).render('posts/form', { title: 'Sửa bài', post: { ...post, ...p }, mediaList: await media.list(post.id), events: await eventOptions(), error });
     }
     // Biên tập viên sửa bài đã duyệt → bài cần được duyệt lại
     let status = post.status;
     if (req.user.role !== 'admin' && status === 'scheduled') status = 'pending';
     await db.run(
-      `UPDATE posts SET title = ?, format = ?, caption = ?, hashtags = ?, media_path = ?, scheduled_at = ?,
+      `UPDATE posts SET title = ?, format = ?, caption = ?, hashtags = ?, scheduled_at = ?, auto_publish = ?,
        event_id = ?, notes = ?, status = ?, updated_at = ? WHERE id = ?`,
-      [p.title, p.format, p.caption, p.hashtags, media, p.scheduled_at, p.event_id, p.notes, status, dates.now(), post.id]
+      [p.title, p.format, p.caption, p.hashtags, p.scheduled_at, p.auto_publish, p.event_id, p.notes, status, dates.now(), post.id]
     );
+    await media.applyForm(post.id, req.body);
+    await media.add(post.id, req.files);
     await afterSave(req, post.id, intent, status);
     await logActivity(req.user, 'post.update', 'post', post.id, p.title);
     flash(req, 'success', status === 'pending' && post.status === 'scheduled' ? 'Đã lưu. Bài sửa sau khi duyệt cần được duyệt lại.' : 'Đã lưu thay đổi.');
@@ -300,6 +361,38 @@ router.post(
   })
 );
 
+// Đăng ngay lên các kênh tự đăng được (không chờ tới giờ hẹn)
+router.post(
+  '/:id/publish-now',
+  requirePerm('post:publish'),
+  h(async (req, res) => {
+    const post = await load(req.params.id);
+    if (post.status !== 'scheduled') {
+      flash(req, 'error', 'Chỉ bài đã duyệt mới đăng được.');
+      return res.redirect(`/posts/${post.id}`);
+    }
+    const results = await publisher.publishPost(post.id);
+    const failed = results.filter((r) => r.ok === false);
+    const sent = results.filter((r) => r.ok);
+    if (!sent.length && !failed.length) flash(req, 'warn', 'Không có kênh nào tự đăng được: Facebook, TikTok chưa kết nối hoặc đã có link.');
+    else if (failed.length) flash(req, 'error', `Lỗi khi đăng: ${failed.map((r) => `${CHANNELS[r.channel].name}: ${r.error}`).join('; ')}`);
+    else flash(req, 'success', `Đã gửi bài lên ${sent.map((r) => CHANNELS[r.channel].name).join(', ')}. TikTok có thể mất vài phút để xử lý.`);
+    await logActivity(req.user, 'post.publishnow', 'post', post.id, post.title);
+    res.redirect(`/posts/${post.id}`);
+  })
+);
+
+router.post(
+  '/:id/retry/:channel',
+  requirePerm('post:publish'),
+  h(async (req, res) => {
+    const post = await load(req.params.id);
+    if (publisher.AUTO.includes(req.params.channel)) await publisher.retry(post.id, req.params.channel);
+    flash(req, 'success', 'Đã thử đăng lại. Xem trạng thái trong bảng Trên các kênh.');
+    res.redirect(`/posts/${post.id}`);
+  })
+);
+
 // Nhập link và số liệu theo từng kênh (số liệu Facebook, TikTok tự cập nhật nếu kênh đã kết nối)
 router.post(
   '/:id/metrics',
@@ -349,6 +442,7 @@ router.post(
       [`${post.title} (bản sao)`, post.format, post.caption, post.hashtags, post.event_id, req.user.id, post.notes, now, now]
     );
     await postChannels.ensure(r.insertId);
+    await media.copy(post.id, r.insertId);
     await logActivity(req.user, 'post.create', 'post', r.insertId, `${post.title} (bản sao)`);
     flash(req, 'success', 'Đã tạo bản sao ở dạng nháp. Chọn ngày đăng mới và chỉnh nội dung nếu cần.');
     res.redirect(`/posts/${r.insertId}/edit`);
@@ -362,10 +456,27 @@ router.post(
     if (!canDelete(req.user, post)) return requirePerm('__never__')(req, res);
     await db.run('DELETE FROM post_channels WHERE post_id = ?', [post.id]);
     await db.run('DELETE FROM posts WHERE id = ?', [post.id]);
-    upload.remove(post.media_path);
+    await media.removeAll(post.id);
     await logActivity(req.user, 'post.delete', 'post', post.id, post.title);
     flash(req, 'success', 'Đã xoá bài.');
     res.redirect('/posts');
+  })
+);
+
+// Tải toàn bộ ảnh/video của bài về một file ZIP, đánh số theo thứ tự đăng
+router.get(
+  '/:id/media.zip',
+  h(async (req, res) => {
+    const post = await load(req.params.id);
+    const items = await media.list(post.id);
+    if (!items.length) return res.redirect(`/posts/${post.id}`);
+    const entries = items.map((m, i) => ({
+      name: `${String(i + 1).padStart(2, '0')}${path.extname(m.path)}`,
+      path: path.resolve(config.uploadDir, m.path),
+    }));
+    res.set('content-type', 'application/zip');
+    res.set('content-disposition', `attachment; filename="binbin-bai-${post.id}.zip"`);
+    await pipeZip(res, entries);
   })
 );
 

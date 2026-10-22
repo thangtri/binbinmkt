@@ -1,9 +1,11 @@
 // TikTok qua TikTok for Developers (Login Kit + Display API).
 // Access token sống 24 giờ, refresh token 365 ngày; hệ thống tự làm mới.
+const fs = require('fs');
 const config = require('../../config');
 const { request, ConnectorError } = require('./http');
 
-const SCOPES = ['user.info.basic', 'user.info.profile', 'user.info.stats', 'video.list'];
+// video.publish: để tự đăng video và ảnh lên TikTok
+const SCOPES = ['user.info.basic', 'user.info.profile', 'user.info.stats', 'video.list', 'video.publish'];
 const API = 'https://open.tiktokapis.com/v2';
 
 function isConfigured() {
@@ -85,4 +87,81 @@ async function fetchStats(account, token) {
   };
 }
 
-module.exports = { key: 'tiktok', oauth: true, isConfigured, authUrl, exchange, refresh, fetchStats };
+/* ---------- Tự đăng bài (Content Posting API, đăng thẳng) ---------- */
+
+async function privacyLevel(auth) {
+  const info = check(await request(`${API}/post/publish/creator_info/query/`, { method: 'POST', headers: auth, json: {} }));
+  const options = info.privacy_level_options || [];
+  // App chưa được TikTok duyệt chỉ đăng được ở chế độ riêng tư
+  return options.includes('PUBLIC_TO_EVERYONE') ? 'PUBLIC_TO_EVERYONE' : options[0] || 'SELF_ONLY';
+}
+
+// files: [{ path, mime, isVideo, publicUrl }]; ảnh cần publicUrl trên tên miền đã xác minh với TikTok
+async function publish(account, token, { message, files }) {
+  if (!token?.access_token) throw new ConnectorError('Chưa kết nối TikTok.', { needsReconnect: true });
+  const auth = { authorization: `Bearer ${token.access_token}` };
+  const video = files.find((x) => x.isVideo);
+  const photos = files.filter((x) => !x.isVideo && /jpe?g|webp/i.test(x.mime || x.path));
+  if (!video && !photos.length) {
+    throw new ConnectorError(files.length ? 'TikTok chỉ nhận ảnh JPG hoặc WebP, hoặc video.' : 'TikTok cần ít nhất một ảnh hoặc video.');
+  }
+  const privacy = await privacyLevel(auth);
+  if (video) {
+    const size = fs.statSync(video.path).size;
+    const init = check(
+      await request(`${API}/post/publish/video/init/`, {
+        method: 'POST',
+        headers: auth,
+        json: {
+          post_info: { title: message.slice(0, 2200), privacy_level: privacy, disable_comment: false, disable_duet: false, disable_stitch: false },
+          source_info: { source: 'FILE_UPLOAD', video_size: size, chunk_size: size, total_chunk_count: 1 },
+        },
+      })
+    );
+    let res;
+    try {
+      res = await fetch(init.upload_url, {
+        method: 'PUT',
+        headers: { 'content-type': video.mime || 'video/mp4', 'content-length': String(size), 'content-range': `bytes 0-${size - 1}/${size}` },
+        body: await fs.openAsBlob(video.path),
+        signal: AbortSignal.timeout(10 * 60 * 1000),
+      });
+    } catch {
+      throw new ConnectorError('Không tải được video lên TikTok.');
+    }
+    if (!res.ok) throw new ConnectorError(`Tải video lên TikTok lỗi ${res.status}.`);
+    return { pending: true, externalId: init.publish_id, privacy, kind: 'video' };
+  }
+  const init = check(
+    await request(`${API}/post/publish/content/init/`, {
+      method: 'POST',
+      headers: auth,
+      json: {
+        post_info: { title: message.split('\n')[0].slice(0, 90), description: message.slice(0, 4000), privacy_level: privacy, disable_comment: false, auto_add_music: true },
+        source_info: { source: 'PULL_FROM_URL', photo_cover_index: 0, photo_images: photos.slice(0, 35).map((p) => p.publicUrl) },
+        post_mode: 'DIRECT_POST',
+        media_type: 'PHOTO',
+      },
+    })
+  );
+  return { pending: true, externalId: init.publish_id, privacy, kind: 'photo' };
+}
+
+// Kiểm tra bài đã xử lý xong chưa; khi xong trả về link bài (nếu bài công khai)
+async function publishStatus(account, token, publishId, kind) {
+  const auth = { authorization: `Bearer ${token.access_token}` };
+  const d = check(await request(`${API}/post/publish/status/fetch/`, { method: 'POST', headers: auth, json: { publish_id: publishId } }));
+  if (d.status === 'FAILED') return { failed: true, error: `TikTok từ chối bài: ${d.fail_reason || 'không rõ lý do'}` };
+  if (d.status !== 'PUBLISH_COMPLETE') return { done: false };
+  const id = (d.publicaly_available_post_id || [])[0];
+  let handle = null;
+  try {
+    handle = JSON.parse(account.extra || '{}').profile?.handle;
+  } catch {
+    handle = null;
+  }
+  const url = id && handle ? `https://www.tiktok.com/${handle}/${kind === 'photo' ? 'photo' : 'video'}/${id}` : null;
+  return { done: true, url, note: id ? null : 'Bài đã lên TikTok ở chế độ riêng tư vì app chưa được TikTok duyệt quyền đăng công khai.' };
+}
+
+module.exports = { key: 'tiktok', oauth: true, isConfigured, authUrl, exchange, refresh, fetchStats, publish, publishStatus };

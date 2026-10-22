@@ -4,6 +4,7 @@ const dates = require('../lib/dates');
 const { EVENT_KINDS } = require('../lib/constants');
 const { requirePerm } = require('../lib/auth');
 const { occurrences } = require('../lib/events');
+const ai = require('../lib/ai');
 const { h, flash, logActivity, str, int } = require('../lib/util');
 
 const router = express.Router();
@@ -53,7 +54,7 @@ router.get(
     }
     const kind = EVENT_KINDS[req.query.kind] ? req.query.kind : '';
     if (kind) for (const g of months) g.items = g.items.filter((e) => e.kind === kind);
-    res.render('events/index', { title: 'Sự kiện', months: months.filter((g) => g.items.length), from, to, kind, today });
+    res.render('events/index', { title: 'Sự kiện', months: months.filter((g) => g.items.length), from, to, kind, today, aiReady: ai.isConfigured() });
   })
 );
 
@@ -124,6 +125,29 @@ router.post(
     await logActivity(req.user, 'event.update', 'event', old.id, ev.title);
     flash(req, 'success', 'Đã lưu sự kiện.');
     res.redirect('/events?from=' + ev.start_date.slice(0, 8) + '01');
+  })
+);
+
+// AI gợi ý 3 bài cho một lần diễn ra của sự kiện
+router.post(
+  '/:id/ideas',
+  requirePerm('post:create'),
+  h(async (req, res) => {
+    const ev = await load(req.params.id);
+    const occ_start = dates.isDate(req.body.start) ? req.body.start : ev.start_date;
+    const occ_end = dates.isDate(req.body.end) ? req.body.end : ev.end_date;
+    const today = dates.today();
+    let ideas = [];
+    let error = null;
+    try {
+      ideas = (await ai.ideasForEvent({ ...ev, occ_start, occ_end })).map((it) => {
+        const d = dates.addDays(occ_start, -Math.max(0, Math.min(30, Number(it.days_before) || 0)));
+        return { ...it, date: d < today ? today : d };
+      });
+    } catch (err) {
+      error = err.message;
+    }
+    res.render('events/ideas', { title: `Ý tưởng cho ${ev.title}`, ev: { ...ev, occ_start, occ_end }, ideas, error });
   })
 );
 

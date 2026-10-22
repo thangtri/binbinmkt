@@ -166,4 +166,4 @@ function start() {
   setInterval(tick, 30 * 60 * 1000).unref();
 }
 
-module.exports = { connectors, getToken, saveToken, disconnect, isConnected, sync, start };
+module.exports = { connectors, getToken, saveToken, freshToken, disconnect, isConnected, sync, start };

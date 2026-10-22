@@ -120,6 +120,7 @@ async function main() {
   app.use('/channels', require('./routes/channels'));
   app.use('/email', require('./routes/email'));
   app.use('/users', require('./routes/users'));
+  app.use('/settings', require('./routes/settings'));
 
   app.use((req, res) => {
     res.status(404).render('error', { title: 'Không tìm thấy', message: 'Trang bạn tìm không tồn tại hoặc đã bị xoá.' });
@@ -141,6 +142,8 @@ async function main() {
     require('./lib/campaigns').resume();
     // Tự động cập nhật số liệu kênh và phân tích AI định kỳ
     require('./lib/sync').start();
+    // Tự đăng bài đã duyệt lên Facebook, TikTok khi đến giờ
+    require('./lib/publisher').start();
   });
 }
 

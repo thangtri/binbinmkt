@@ -82,18 +82,118 @@
     if (mediaInput && preview) {
       mediaInput.addEventListener('change', function () {
         preview.innerHTML = '';
-        var file = mediaInput.files[0];
-        if (!file) {
-          preview.hidden = true;
+        var files = Array.prototype.slice.call(mediaInput.files);
+        preview.hidden = !files.length;
+        files.forEach(function (file, i) {
+          var el = document.createElement(file.type.indexOf('video') === 0 ? 'video' : 'img');
+          el.src = URL.createObjectURL(file);
+          if (el.tagName === 'VIDEO') el.muted = true;
+          else el.alt = 'File mới số ' + (i + 1);
+          preview.appendChild(el);
+        });
+      });
+    }
+
+    // Nhờ AI viết bài: gửi ý chính, nhận 3 phương án, bấm để điền vào form
+    var writer = form.querySelector('[data-ai-writer]');
+    if (writer) {
+      var runBtn = writer.querySelector('[data-ai-run]');
+      var status = writer.querySelector('[data-ai-status]');
+      var box = writer.querySelector('[data-ai-options]');
+      var field = function (name) {
+        return form.querySelector('[name="' + name + '"]');
+      };
+      runBtn.addEventListener('click', function () {
+        var brief = writer.querySelector('[data-ai-brief]').value.trim();
+        if (!brief) {
+          status.textContent = 'Hãy nhập ý chính của bài trước.';
           return;
         }
-        var url = URL.createObjectURL(file);
-        var el = document.createElement(file.type.indexOf('video') === 0 ? 'video' : 'img');
-        el.src = url;
-        if (el.tagName === 'VIDEO') el.controls = true;
-        else el.alt = 'Xem trước file đã chọn';
-        preview.appendChild(el);
-        preview.hidden = false;
+        runBtn.disabled = true;
+        runBtn.textContent = 'AI đang viết…';
+        status.textContent = 'Đang viết 3 phương án, thường mất 20–40 giây.';
+        box.innerHTML = '';
+        fetch('/posts/ai/draft', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-csrf-token': writer.getAttribute('data-csrf'), accept: 'application/json' },
+          body: JSON.stringify({
+            brief: brief,
+            tone: writer.querySelector('[data-ai-tone]').value,
+            format: field('format').value,
+            event_id: field('event_id').value,
+            current: caption.value,
+          }),
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              if (!r.ok) throw new Error(data.error || 'AI chưa viết được, thử lại sau.');
+              return data;
+            });
+          })
+          .then(function (data) {
+            status.textContent = 'Chọn một phương án để điền vào bài. Bạn vẫn sửa được sau khi điền.';
+            data.options.forEach(function (o, i) {
+              var card = document.createElement('div');
+              card.className = 'ai-option';
+              var h = document.createElement('p');
+              h.className = 'ai-option-title';
+              h.textContent = 'Phương án ' + (i + 1) + ': ' + o.title;
+              var body = document.createElement('p');
+              body.className = 'ai-option-text';
+              body.textContent = o.caption;
+              var tags = document.createElement('p');
+              tags.className = 'tags';
+              tags.textContent = o.hashtags;
+              var use = document.createElement('button');
+              use.type = 'button';
+              use.className = 'btn btn-small';
+              use.textContent = 'Dùng phương án này';
+              use.addEventListener('click', function () {
+                if (!field('title').value.trim()) field('title').value = o.title;
+                caption.value = o.caption;
+                field('hashtags').value = o.hashtags;
+                updateCounter();
+                status.textContent = 'Đã điền phương án ' + (i + 1) + '. Nhớ kiểm tra lại giá, ngày và thông tin liên hệ.';
+                caption.focus();
+              });
+              card.appendChild(h);
+              card.appendChild(body);
+              card.appendChild(tags);
+              card.appendChild(use);
+              box.appendChild(card);
+            });
+          })
+          .catch(function (err) {
+            status.textContent = err.message;
+          })
+          .then(function () {
+            runBtn.disabled = false;
+            runBtn.textContent = 'Viết lại 3 phương án';
+          });
+      });
+    }
+
+    // Sắp xếp ảnh đã tải lên bằng nút mũi tên
+    var grid = form.querySelector('[data-media-grid]');
+    var orderInput = form.querySelector('[data-media-order]');
+    if (grid && orderInput) {
+      var renumber = function () {
+        var items = grid.querySelectorAll('.media-item');
+        orderInput.value = Array.prototype.map.call(items, function (li) {
+          return li.getAttribute('data-id');
+        }).join(',');
+        items.forEach(function (li, i) {
+          li.querySelector('[data-media-num]').textContent = i + 1;
+        });
+      };
+      grid.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-move]');
+        if (!btn) return;
+        var li = btn.closest('.media-item');
+        if (btn.getAttribute('data-move') === '-1' && li.previousElementSibling) grid.insertBefore(li, li.previousElementSibling);
+        if (btn.getAttribute('data-move') === '1' && li.nextElementSibling) grid.insertBefore(li.nextElementSibling, li);
+        renumber();
+        btn.focus();
       });
     }
   }

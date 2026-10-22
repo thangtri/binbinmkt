@@ -47,6 +47,21 @@ for (const [path, page] of [['/chinh-sach-bao-mat', 'privacy'], ['/dieu-khoan', 
   });
 }
 
+// Ảnh/video của bài qua link có chữ ký (TikTok tự tải ảnh về khi đăng)
+router.get(
+  '/m/:id/:exp/:sig',
+  h(async (req, res) => {
+    const { verifyMedia } = require('../lib/publisher');
+    if (!verifyMedia(req.params.id, req.params.exp, req.params.sig)) return res.status(404).end();
+    const m = await db.get('SELECT path, mime FROM post_media WHERE id = ?', [Number(req.params.id)]);
+    if (!m) return res.status(404).end();
+    const full = require('path').resolve(config.uploadDir, m.path);
+    if (!full.startsWith(config.uploadDir)) return res.status(404).end();
+    res.type(m.mime || 'application/octet-stream');
+    res.sendFile(full);
+  })
+);
+
 const EVENT_COLUMN = {
   delivered: 'delivered_at',
   opened: 'opened_at',

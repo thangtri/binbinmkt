@@ -38,15 +38,16 @@
       <h2>Nội dung</h2>
       <% if (fullText) { %><button class="btn btn-small" type="button" data-copy="<%= fullText %>">Sao chép để đăng</button><% } %>
     </div>
-    <% if (post.media_path) { %>
-      <div class="media-current media-large">
-        <% if (/\.(mp4|mov|webm)$/i.test(post.media_path)) { %>
-          <video src="/uploads/<%= post.media_path %>" controls preload="metadata"></video>
-        <% } else { %>
-          <img src="/uploads/<%= post.media_path %>" alt="Ảnh đính kèm của bài">
-        <% } %>
-        <a href="/uploads/<%= post.media_path %>" download>Tải file gốc</a>
+    <% if (mediaList.length) { %>
+      <div class="gallery<%= mediaList.length === 1 ? ' gallery-one' : '' %>">
+        <% mediaList.forEach((m, i) => { const vid = /^video\//.test(m.mime || '') || /\.(mp4|mov|webm)$/i.test(m.path); %>
+          <figure>
+            <% if (vid) { %><video src="/uploads/<%= m.path %>" controls preload="metadata"></video><% } else { %><a href="/uploads/<%= m.path %>" target="_blank" rel="noopener"><img src="/uploads/<%= m.path %>" alt="Ảnh số <%= i + 1 %> của bài" loading="lazy"></a><% } %>
+            <figcaption><%= i + 1 %></figcaption>
+          </figure>
+        <% }) %>
       </div>
+      <p class="gallery-actions"><a class="btn btn-small" href="/posts/<%= post.id %>/media.zip"><%- icon('upload') %> Tải <%= mediaList.length > 1 ? 'cả ' + mediaList.length + ' file' : 'file' %> (.zip)</a></p>
     <% } %>
     <% if (post.caption) { %><div class="caption"><%= post.caption %></div><% } else { %><p class="empty">Chưa có nội dung.</p><% } %>
     <% if (post.hashtags) { %><p class="tags"><%= post.hashtags %></p><% } %>
@@ -118,11 +119,22 @@
   <form method="post" action="/posts/<%= post.id %>/<%= post.status === 'scheduled' ? 'publish' : 'metrics' %>">
     <input type="hidden" name="_csrf" value="<%= csrf %>">
     <table class="table table-rows">
-      <thead><tr><th>Kênh</th><th>Link bài</th><th class="num">Xem</th><th class="num">Thích</th><th class="num">Bình luận</th><th class="num">Chia sẻ</th></tr></thead>
+      <thead><tr><th>Kênh</th><th>Đăng</th><th>Link bài</th><th class="num">Xem</th><th class="num">Thích</th><th class="num">Bình luận</th><th class="num">Chia sẻ</th></tr></thead>
       <tbody>
         <% for (const c of channels) { const meta = C.CHANNELS[c.channel]; %>
           <tr>
             <td><%- include('../partials/chips', { kind: 'channel', value: c.channel }) %></td>
+            <td class="pub-state">
+              <% const st = String(c.publish_status || ''); const auto = autoChannels.includes(c.channel); %>
+              <% if (st === 'done') { %><span class="pub pub-done">Đã tự đăng</span>
+              <% } else if (st.startsWith('processing')) { %><span class="pub pub-wait">TikTok đang xử lý</span>
+              <% } else if (st === 'publishing') { %><span class="pub pub-wait">Đang đăng…</span>
+              <% } else if (st === 'failed') { %><span class="pub pub-fail">Lỗi</span>
+              <% } else if (c.published_url) { %><span class="pub pub-done">Đã đăng tay</span>
+              <% } else if (auto && Number(post.auto_publish)) { %><span class="pub">Tự đăng lúc <%= post.scheduled_at ? d.hm(post.scheduled_at) : '' %></span>
+              <% } else { %><span class="pub">Đăng tay</span><% } %>
+              <% if (c.publish_error) { %><small class="block <%= st === 'failed' ? 'down' : 'muted' %>"><%= c.publish_error %></small><% } %>
+            </td>
             <% if (editMetrics || (post.status === 'scheduled' && can('post:publish'))) { %>
               <td><label class="sr-only" for="url-<%= c.channel %>">Link trên <%= meta.name %></label><input id="url-<%= c.channel %>" class="input-sm" type="url" name="url_<%= c.channel %>" value="<%= c.published_url || '' %>" placeholder="Dán link bài trên <%= meta.name %>"></td>
             <% } else { %>
@@ -139,6 +151,7 @@
     </table>
     <% if (post.status === 'scheduled' && can('post:publish')) { %>
       <div class="pad post-channels-foot">
+        <button class="btn" type="submit" formaction="/posts/<%= post.id %>/publish-now" data-busy="Đang đăng…" formnovalidate><%- icon('send') %> Đăng ngay lên Facebook, TikTok</button>
         <button class="btn btn-primary" type="submit"><%- icon('check') %> Đánh dấu đã đăng</button>
         <span class="hint">Link có thể dán sau. Với Facebook và TikTok đã kết nối, lượt thích, bình luận, chia sẻ tự cập nhật theo link.</span>
       </div>

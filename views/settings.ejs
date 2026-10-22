@@ -1,0 +1,26 @@
+<%- include('partials/top') %>
+<header class="page-head">
+  <div>
+    <h1>Thông tin khách sạn</h1>
+    <p class="sub">AI đọc phần này mỗi khi viết bài và gợi ý ý tưởng, nên càng cụ thể bài viết càng đúng.</p>
+  </div>
+</header>
+
+<form method="post" action="/settings" class="panel settings-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="settings-grid">
+    <% for (const f of fields) { %>
+      <label class="field<%= f.long ? ' field-wide' : '' %>">
+        <span><%= f.label %></span>
+        <% if (f.long) { %>
+          <textarea name="<%= f.key %>" rows="4"><%= values[f.key] %></textarea>
+        <% } else { %>
+          <input type="text" name="<%= f.key %>" value="<%= values[f.key] %>">
+        <% } %>
+        <% if (f.hint) { %><small><%= f.hint %></small><% } %>
+      </label>
+    <% } %>
+  </div>
+  <div><button class="btn btn-primary" type="submit">Lưu thông tin</button></div>
+</form>
+<%- include('partials/bottom') %>

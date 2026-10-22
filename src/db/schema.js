@@ -216,6 +216,47 @@ const migrations = [
       },
     ];
   },
+  // Quên mật khẩu, nhiều ảnh cho một bài, thông tin khách sạn cho AI, tự đăng bài
+  function resetMediaSettingsPublish({ id, longtext, tail }) {
+    return [
+      'ALTER TABLE users ADD COLUMN session_version INT NOT NULL DEFAULT 1',
+      `CREATE TABLE password_resets (
+        id ${id},
+        user_id INT NOT NULL,
+        token_hash VARCHAR(64) NOT NULL,
+        expires_at DATETIME NOT NULL,
+        used_at DATETIME NULL,
+        created_at DATETIME NOT NULL
+      )${tail}`,
+      'CREATE INDEX idx_resets_token ON password_resets (token_hash)',
+      `CREATE TABLE post_media (
+        id ${id},
+        post_id INT NOT NULL,
+        path VARCHAR(255) NOT NULL,
+        mime VARCHAR(60) NULL,
+        size INT NULL,
+        position INT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL
+      )${tail}`,
+      'CREATE INDEX idx_post_media ON post_media (post_id, position)',
+      async () => {
+        const rows = await db.all('SELECT id, media_path, created_at FROM posts WHERE media_path IS NOT NULL');
+        for (const p of rows) {
+          const mime = /\.(mp4|mov|webm)$/i.test(p.media_path) ? 'video/mp4' : 'image/jpeg';
+          await db.run('INSERT INTO post_media (post_id, path, mime, position, created_at) VALUES (?, ?, ?, 0, ?)', [p.id, p.media_path, mime, p.created_at]);
+        }
+      },
+      `CREATE TABLE settings (
+        name VARCHAR(60) PRIMARY KEY,
+        value ${longtext} NULL,
+        updated_at DATETIME NULL
+      )${tail}`,
+      'ALTER TABLE posts ADD COLUMN auto_publish INT NOT NULL DEFAULT 1',
+      'ALTER TABLE post_channels ADD COLUMN publish_status VARCHAR(20) NULL',
+      'ALTER TABLE post_channels ADD COLUMN publish_error VARCHAR(500) NULL',
+      'ALTER TABLE post_channels ADD COLUMN external_id VARCHAR(200) NULL',
+    ];
+  },
 ];
 
 async function migrate() {

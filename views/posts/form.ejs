@@ -21,6 +21,30 @@
       data-post-form data-google-limit="<%= C.GOOGLE_LIMIT %>">
   <input type="hidden" name="_csrf" value="<%= csrf %>">
   <div class="editor-main panel">
+    <% if (typeof aiReady !== 'undefined' && aiReady) { %>
+      <details class="ai-writer" data-ai-writer data-csrf="<%= csrf %>"<%= isNew && !post.caption ? ' open' : '' %>>
+        <summary><%- icon('send') %> Nhờ AI viết bài</summary>
+        <div class="ai-writer-body">
+          <label class="field">
+            <span>Ý chính của bài</span>
+            <textarea rows="3" data-ai-brief placeholder="Ví dụ: combo 2 đêm cuối tuần giảm 15%, tặng bữa sáng cho 2 người, áp dụng tới hết tháng 11"></textarea>
+          </label>
+          <div class="ai-writer-row">
+            <label class="field field-inline"><span>Sắc thái</span>
+              <select data-ai-tone>
+                <option>Thân thiện, ấm áp</option>
+                <option>Sang trọng, tinh tế</option>
+                <option>Vui nhộn, bắt trend</option>
+                <option>Ngắn gọn, đi thẳng vào ưu đãi</option>
+              </select>
+            </label>
+            <button class="btn btn-primary" type="button" data-ai-run>Viết 3 phương án</button>
+          </div>
+          <p class="hint" data-ai-status aria-live="polite">AI dùng thông tin trong mục "Thông tin khách sạn" và sự kiện đã chọn. Mất khoảng 20–40 giây.</p>
+          <div class="ai-options" data-ai-options></div>
+        </div>
+      </details>
+    <% } %>
     <label class="field">
       <span>Tiêu đề nội bộ</span>
       <input type="text" name="title" value="<%= post.title %>" maxlength="200" required placeholder="Ví dụ: Ưu đãi phòng đôi cuối tuần">
@@ -45,19 +69,27 @@
     </label>
 
     <div class="field">
-      <span>Ảnh hoặc video</span>
-      <% if (post.media_path) { %>
-        <div class="media-current">
-          <% if (/\.(mp4|mov|webm)$/i.test(post.media_path)) { %>
-            <video src="/uploads/<%= post.media_path %>" controls preload="metadata"></video>
-          <% } else { %>
-            <img src="/uploads/<%= post.media_path %>" alt="Ảnh đính kèm hiện tại">
-          <% } %>
-          <label class="check"><input type="checkbox" name="remove_media" value="1"> Gỡ file này</label>
-        </div>
+      <span>Ảnh và video</span>
+      <% const list = typeof mediaList !== 'undefined' ? mediaList : []; %>
+      <% if (list.length) { %>
+        <input type="hidden" name="media_order" value="<%= list.map((m) => m.id).join(',') %>" data-media-order>
+        <ol class="media-grid" data-media-grid>
+          <% list.forEach((m, i) => { const vid = /^video\//.test(m.mime || '') || /\.(mp4|mov|webm)$/i.test(m.path); %>
+            <li class="media-item" data-id="<%= m.id %>">
+              <% if (vid) { %><video src="/uploads/<%= m.path %>" preload="metadata" muted></video><% } else { %><img src="/uploads/<%= m.path %>" alt="Ảnh số <%= i + 1 %>"><% } %>
+              <span class="media-num" data-media-num><%= i + 1 %></span>
+              <div class="media-tools">
+                <button type="button" class="icon-btn" data-move="-1" aria-label="Đưa lên trước"><%- icon('left') %></button>
+                <button type="button" class="icon-btn" data-move="1" aria-label="Đưa ra sau"><%- icon('right') %></button>
+                <label class="check media-remove"><input type="checkbox" name="remove_<%= m.id %>" value="1"> Gỡ</label>
+              </div>
+            </li>
+          <% }) %>
+        </ol>
+        <small>Ảnh số 1 là ảnh đại diện. Dùng mũi tên để đổi thứ tự đăng.</small>
       <% } %>
-      <input type="file" name="media" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" data-media-input>
-      <small>Tối đa 50 MB. Chọn file mới sẽ thay file hiện tại.</small>
+      <input type="file" name="media" multiple accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" data-media-input>
+      <small>Chọn được nhiều file cùng lúc, tối đa 20 file, mỗi file 50 MB. File mới được thêm vào cuối.</small>
       <div class="media-preview" data-media-preview hidden></div>
     </div>
   </div>
@@ -84,6 +116,8 @@
           <% } %>
         </select>
       </label>
+      <label class="check"><input type="checkbox" name="auto_publish" value="1"<%= Number(post.auto_publish ?? 1) ? ' checked' : '' %>> Tự đăng lên Facebook, TikTok khi đến giờ</label>
+      <p class="hint">Chỉ áp dụng cho bài đã duyệt và kênh đã kết nối. Google Maps, Zalo OA vẫn đăng tay.</p>
       <label class="field"><span>Ghi chú cho team</span><textarea name="notes" rows="3" placeholder="Ai quay, cần chuẩn bị gì…"><%= post.notes %></textarea></label>
     </div>
 

@@ -1,9 +1,12 @@
 // Facebook Page qua Graph API. Đăng nhập Facebook một lần → lấy Page token (không hết hạn khi
 // xuất phát từ token người dùng dài hạn) → đọc người theo dõi và tương tác của các bài gần đây.
+const fs = require('fs');
+const path = require('path');
 const config = require('../../config');
 const { request, ConnectorError } = require('./http');
 
-const SCOPES = ['pages_show_list', 'pages_read_engagement', 'read_insights'];
+// pages_manage_posts: để tự đăng bài lên Page
+const SCOPES = ['pages_show_list', 'pages_read_engagement', 'read_insights', 'pages_manage_posts'];
 
 function graph(path) {
   return `https://graph.facebook.com/${config.facebook.graphVersion}${path}`;
@@ -86,4 +89,39 @@ async function fetchStats(account, token) {
   };
 }
 
-module.exports = { key: 'facebook', oauth: true, isConfigured, authUrl, exchange, fetchStats };
+/* ---------- Tự đăng bài ---------- */
+
+async function uploadForm(url, fields, file) {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) fd.append(k, v);
+  if (file) fd.append('source', await fs.openAsBlob(file.path, { type: file.mime }), path.basename(file.path));
+  return request(url, { method: 'POST', body: fd, timeout: 10 * 60 * 1000 });
+}
+
+// files: [{ path (đường dẫn tuyệt đối), mime, isVideo }]
+async function publish(account, token, { message, files }) {
+  if (!token?.access_token) throw new ConnectorError('Chưa kết nối Facebook.', { needsReconnect: true });
+  const t = token.access_token;
+  const page = account.external_id;
+  const video = files.find((x) => x.isVideo);
+  if (video) {
+    // Facebook không gộp video với ảnh trong một bài: đăng video đầu tiên kèm nội dung
+    const v = check(await uploadForm(`https://graph-video.facebook.com/${config.facebook.graphVersion}/${page}/videos`, { description: message, access_token: t }, video));
+    return {
+      url: `https://www.facebook.com/${page}/videos/${v.id}`,
+      externalId: v.id,
+      note: files.length > 1 ? 'Facebook chỉ đăng được video, các ảnh đi kèm bị bỏ qua.' : null,
+    };
+  }
+  const fields = { message, access_token: t };
+  const photos = files.slice(0, 30);
+  for (let i = 0; i < photos.length; i++) {
+    const p = check(await uploadForm(graph(`/${page}/photos`), { published: 'false', access_token: t }, photos[i]));
+    fields[`attached_media[${i}]`] = JSON.stringify({ media_fbid: p.id });
+  }
+  const post = check(await request(graph(`/${page}/feed`), { method: 'POST', form: fields }));
+  const link = await request(graph(`/${post.id}?`) + new URLSearchParams({ fields: 'permalink_url', access_token: t }));
+  return { url: link.data?.permalink_url || `https://www.facebook.com/${post.id}`, externalId: post.id };
+}
+
+module.exports = { key: 'facebook', oauth: true, isConfigured, authUrl, exchange, fetchStats, publish };

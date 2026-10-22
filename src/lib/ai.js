@@ -18,6 +18,29 @@ function isConfigured() {
   return Boolean(config.ai.apiKey);
 }
 
+// Gọi Claude với structured output (JSON theo schema) và chuyển lỗi sang thông báo tiếng Việt
+async function callJson(params) {
+  if (!isConfigured()) throw new Error('Chưa cấu hình ANTHROPIC_API_KEY trên máy chủ.');
+  const req = { ...params, model: config.ai.model };
+  if (FALLBACK_MODELS.has(config.ai.model)) {
+    req.betas = ['server-side-fallback-2026-07-01'];
+    req.fallbacks = 'default';
+  }
+  let response;
+  try {
+    response = await getClient().beta.messages.create(req);
+  } catch (err) {
+    if (err instanceof Anthropic.AuthenticationError) throw new Error('ANTHROPIC_API_KEY không hợp lệ.');
+    if (err instanceof Anthropic.RateLimitError) throw new Error('Claude đang quá tải hoặc hết hạn mức, thử lại sau ít phút.');
+    if (err instanceof Anthropic.APIError) throw new Error(`Claude trả về lỗi ${err.status}: ${err.message}`);
+    throw err;
+  }
+  if (response.stop_reason === 'refusal') throw new Error('Claude từ chối yêu cầu này.');
+  if (response.stop_reason === 'max_tokens') throw new Error('Câu trả lời bị cắt giữa chừng, hãy thử lại.');
+  const text = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+  return { out: JSON.parse(text), model: response.model };
+}
+
 const SCHEMA = {
   type: 'object',
   properties: {
@@ -97,25 +120,7 @@ async function analyze(channel, user = null) {
       },
     ],
   };
-  if (FALLBACK_MODELS.has(config.ai.model)) {
-    params.betas = ['server-side-fallback-2026-07-01'];
-    params.fallbacks = 'default';
-  }
-
-  let response;
-  try {
-    response = await getClient().beta.messages.create(params);
-  } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError) throw new Error('ANTHROPIC_API_KEY không hợp lệ.');
-    if (err instanceof Anthropic.RateLimitError) throw new Error('Claude đang quá tải hoặc hết hạn mức, thử lại sau ít phút.');
-    if (err instanceof Anthropic.APIError) throw new Error(`Claude trả về lỗi ${err.status}: ${err.message}`);
-    throw err;
-  }
-  if (response.stop_reason === 'refusal') throw new Error('Claude từ chối phân tích dữ liệu này.');
-  if (response.stop_reason === 'max_tokens') throw new Error('Phân tích bị cắt giữa chừng, hãy thử lại.');
-
-  const text = response.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
-  const out = JSON.parse(text);
+  const { out, model } = await callJson(params);
   const r = await db.run(
     `INSERT INTO channel_insights (channel, summary, highlights, concerns, recommendations, model, created_by, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -125,7 +130,7 @@ async function analyze(channel, user = null) {
       JSON.stringify(out.highlights || []),
       JSON.stringify(out.concerns || []),
       JSON.stringify(out.recommendations || []),
-      response.model,
+      model,
       user?.id || null,
       dates.now(),
     ]
@@ -146,4 +151,117 @@ async function latest(channel) {
   return { ...row, highlights: list(row.highlights), concerns: list(row.concerns), recommendations: list(row.recommendations) };
 }
 
-module.exports = { isConfigured, analyze, latest };
+/* ---------- Viết bài và gợi ý ý tưởng ---------- */
+
+function hotelBrief(s) {
+  const lines = [
+    `Tên: ${s.hotel_name}`,
+    s.address && `Địa chỉ: ${s.address}`,
+    s.hotline && `Hotline đặt phòng: ${s.hotline}`,
+    s.zalo && `Zalo đặt phòng: ${s.zalo}`,
+    s.booking_url && `Link đặt phòng: ${s.booking_url}`,
+    s.highlights && `Điểm mạnh:\n${s.highlights}`,
+    s.audience && `Khách hàng chính: ${s.audience}`,
+    s.voice && `Giọng văn: ${s.voice}`,
+    s.avoid && `Không được dùng hoặc hứa hẹn: ${s.avoid}`,
+    s.hashtags && `Hashtag luôn có: ${s.hashtags}`,
+  ];
+  return lines.filter(Boolean).join('\n');
+}
+
+const WRITER_SYSTEM = `Bạn là người viết nội dung mạng xã hội cho một khách sạn ở Việt Nam.
+Mỗi bài được đăng nguyên văn lên cả Facebook, TikTok, Google Maps và Zalo OA, nên:
+- Viết tiếng Việt tự nhiên, câu ngắn, dễ đọc trên điện thoại; có thể dùng vài emoji phù hợp nhưng không lạm dụng.
+- Nội dung (caption) dưới 1.500 ký tự vì Google Maps chỉ nhận tới đó; dòng đầu phải đủ hấp dẫn để người lướt dừng lại.
+- Kết thúc bằng lời kêu gọi đặt phòng rõ ràng, dùng đúng hotline/Zalo/link trong thông tin khách sạn nếu có. Không bịa số điện thoại, giá, ưu đãi hay tiện ích không có trong yêu cầu hoặc thông tin khách sạn.
+- Hashtag để riêng, 3–6 cái, không lặp trong caption.
+- Tiêu đề nội bộ ngắn gọn (dưới 60 ký tự) để team nhận ra bài trên lịch; khách không thấy tiêu đề này.`;
+
+const OPTION = {
+  type: 'object',
+  properties: {
+    title: { type: 'string', description: 'Tiêu đề nội bộ, dưới 60 ký tự' },
+    caption: { type: 'string', description: 'Nội dung đăng, không gồm hashtag' },
+    hashtags: { type: 'string', description: 'Hashtag cách nhau bằng dấu cách' },
+  },
+  required: ['title', 'caption', 'hashtags'],
+  additionalProperties: false,
+};
+
+async function writePost({ brief, tone, format, eventTitle, current }) {
+  const s = await require('./settings').all();
+  const req = [
+    `Ý chính của bài: ${brief}`,
+    format && `Định dạng: ${format}`,
+    tone && `Sắc thái mong muốn: ${tone}`,
+    eventTitle && `Bài gắn với sự kiện: ${eventTitle}`,
+    current && `Bản nháp hiện tại (có thể dựa vào, viết lại cho hay hơn):\n${current}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+  const { out } = await callJson({
+    max_tokens: 16000,
+    output_config: {
+      effort: 'medium',
+      format: {
+        type: 'json_schema',
+        schema: {
+          type: 'object',
+          properties: { options: { type: 'array', items: OPTION, description: 'Đúng 3 phương án khác nhau về cách mở bài và góc nhìn' } },
+          required: ['options'],
+          additionalProperties: false,
+        },
+      },
+    },
+    system: WRITER_SYSTEM,
+    messages: [{ role: 'user', content: `Thông tin khách sạn:\n${hotelBrief(s)}\n\nViết 3 phương án cho bài sau.\n${req}` }],
+  });
+  return (out.options || []).slice(0, 3);
+}
+
+async function ideasForEvent(ev) {
+  const s = await require('./settings').all();
+  const { out } = await callJson({
+    max_tokens: 16000,
+    output_config: {
+      effort: 'medium',
+      format: {
+        type: 'json_schema',
+        schema: {
+          type: 'object',
+          properties: {
+            ideas: {
+              type: 'array',
+              description: 'Đúng 3 ý tưởng, rải trước và trong sự kiện',
+              items: {
+                type: 'object',
+                properties: {
+                  ...OPTION.properties,
+                  format: { type: 'string', enum: require('./constants').POST_FORMATS },
+                  days_before: { type: 'integer', description: 'Đăng trước ngày bắt đầu sự kiện bao nhiêu ngày (0 = đúng ngày)' },
+                  why: { type: 'string', description: 'Một câu giải thích vì sao bài này hợp với sự kiện' },
+                },
+                required: ['title', 'caption', 'hashtags', 'format', 'days_before', 'why'],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ['ideas'],
+          additionalProperties: false,
+        },
+      },
+    },
+    system: WRITER_SYSTEM,
+    messages: [
+      {
+        role: 'user',
+        content: `Thông tin khách sạn:\n${hotelBrief(s)}\n\nSự kiện: ${ev.title} (${ev.occ_start}${ev.occ_end !== ev.occ_start ? ` đến ${ev.occ_end}` : ''}).${
+          ev.description ? `\nGhi chú của team: ${ev.description}` : ''
+        }\n\nĐề xuất 3 bài đăng cho dịp này, mỗi bài một góc khác nhau (ví dụ: báo trước ưu đãi, gợi ý trải nghiệm, nhắc đặt phòng sát ngày).`,
+      },
+    ],
+  });
+  return (out.ideas || []).slice(0, 3);
+}
+
+module.exports = { isConfigured, analyze, latest, writePost, ideasForEvent };

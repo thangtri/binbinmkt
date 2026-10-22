@@ -78,15 +78,19 @@ router.post(
       const err = validatePassword(req.body.password);
       if (err) return back(err);
     }
-    await db.run('UPDATE users SET name = ?, username = ?, email = ?, role = ?, active = ? WHERE id = ?', [
+    await db.run('UPDATE users SET name = ?, username = ?, email = ?, role = ?, active = ?, session_version = session_version + ? WHERE id = ?', [
       str(req.body.name, 120) || u.name,
       username,
       email,
       role,
       active,
+      Number(u.active) && !active ? 1 : 0,
       u.id,
     ]);
-    if (req.body.password) await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hashPassword(req.body.password), u.id]);
+    if (req.body.password) {
+      await db.run('UPDATE users SET password_hash = ?, session_version = session_version + 1 WHERE id = ?', [hashPassword(req.body.password), u.id]);
+      if (u.id === req.user.id) req.session.sv = Number(req.user.session_version) + 1;
+    }
     await logActivity(req.user, 'user.update', 'user', u.id, u.name);
     flash(req, 'success', `Đã lưu tài khoản ${u.name}${username !== u.username ? `. Tên đăng nhập mới: "${username}"` : ''}.`);
     res.redirect('/users');

@@ -78,9 +78,14 @@ async function loadUser(req, res, next) {
   req.user = null;
   const id = req.session?.uid;
   if (id) {
-    const user = await db.get('SELECT id, username, email, name, role, active FROM users WHERE id = ?', [id]);
-    if (user && user.active) req.user = user;
-    else req.session = null;
+    const user = await db.get('SELECT id, username, email, name, role, active, session_version FROM users WHERE id = ?', [id]);
+    // session_version tăng khi đổi/đặt lại mật khẩu → mọi phiên đăng nhập cũ hết hiệu lực
+    if (user && user.active && Number(req.session.sv || 1) === Number(user.session_version)) req.user = user;
+    else {
+      // Phiên hết hiệu lực: xoá thông tin đăng nhập nhưng giữ session để các bước sau (CSRF) vẫn dùng được
+      req.session.uid = null;
+      req.session.sv = null;
+    }
   }
   next();
 }

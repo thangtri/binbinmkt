@@ -38,6 +38,13 @@
             <% if (ev.post_count) { %><span><%= ev.post_count %> bài</span>
             <% } else if (!past) { %><span class="warn">Chưa có bài</span><% } %>
             <% if (!past && can('post:create')) { %><a class="btn btn-small" href="/posts/new?event=<%= ev.id %>&date=<%= d.addDays(ev.occ_start, -3) < today ? today : d.addDays(ev.occ_start, -3) %>">Soạn bài</a><% } %>
+            <% if (!past && aiReady && can('post:create')) { %>
+              <form method="post" action="/events/<%= ev.id %>/ideas">
+                <input type="hidden" name="_csrf" value="<%= csrf %>">
+                <input type="hidden" name="start" value="<%= ev.occ_start %>"><input type="hidden" name="end" value="<%= ev.occ_end %>">
+                <button class="btn btn-small" type="submit" data-busy="AI đang nghĩ…">Gợi ý bài bằng AI</button>
+              </form>
+            <% } %>
             <% if (can('event:edit')) { %><a class="btn btn-small btn-quiet" href="/events/<%= ev.id %>/edit">Sửa</a><% } %>
           </div>
         </li>

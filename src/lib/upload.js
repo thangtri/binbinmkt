@@ -26,7 +26,7 @@ const storage = multer.diskStorage({
 
 const media = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 50 * 1024 * 1024, files: 20 },
   fileFilter: (req, file, cb) => {
     if (ALLOWED[file.mimetype]) return cb(null, true);
     const err = new Error('Chỉ nhận ảnh JPG, PNG, WebP, GIF hoặc video MP4, MOV, WebM.');
@@ -36,18 +36,29 @@ const media = multer({
   },
 });
 
-// Lỗi kích thước file của multer → thông báo dễ hiểu
-function single(field) {
-  const mw = media.single(field);
+// Lỗi giới hạn của multer → thông báo dễ hiểu
+function friendly(mw) {
   return (req, res, next) =>
     mw(req, res, (err) => {
       if (err?.code === 'LIMIT_FILE_SIZE') {
         err.status = 400;
         err.expose = true;
-        err.message = 'File quá lớn. Giới hạn 50 MB — hãy nén video trước khi tải lên.';
+        err.message = 'File quá lớn. Giới hạn 50 MB mỗi file, hãy nén video trước khi tải lên.';
+      } else if (err?.code === 'LIMIT_FILE_COUNT' || err?.code === 'LIMIT_UNEXPECTED_FILE') {
+        err.status = 400;
+        err.expose = true;
+        err.message = 'Mỗi lần tải tối đa 20 file.';
       }
       next(err);
     });
+}
+
+function single(field) {
+  return friendly(media.single(field));
+}
+
+function many(field, max = 20) {
+  return friendly(media.array(field, max));
 }
 
 // Đường dẫn lưu trong DB: "2026-10/abc.jpg"
@@ -66,4 +77,4 @@ function memoryCsv() {
   return multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1 } }).single('file');
 }
 
-module.exports = { single, relPath, remove, memoryCsv };
+module.exports = { single, many, relPath, remove, memoryCsv };
