@@ -59,46 +59,21 @@
     });
   });
 
-  // Form soạn bài: đổi kênh → đổi định dạng, gợi ý, giới hạn ký tự
+  // Form soạn bài: đếm ký tự, nhắc giới hạn 1.500 ký tự của Google Maps
   var form = document.querySelector('[data-post-form]');
   if (form) {
-    var formats = JSON.parse(form.getAttribute('data-formats'));
-    var limits = JSON.parse(form.getAttribute('data-limits'));
-    var tips = JSON.parse(form.getAttribute('data-tips'));
+    var googleLimit = Number(form.getAttribute('data-google-limit')) || 1500;
     var caption = form.querySelector('[data-caption]');
     var counter = form.querySelector('[data-counter]');
-    var formatSel = form.querySelector('[data-format]');
-    var tip = form.querySelector('[data-tip]');
-
-    var channel = function () {
-      var c = form.querySelector('input[name="channel"]:checked');
-      return c ? c.value : '';
-    };
 
     var updateCounter = function () {
       var n = caption.value.length;
-      var limit = limits[channel()] || 0;
-      counter.textContent = limit ? n.toLocaleString('vi-VN') + ' / ' + limit.toLocaleString('vi-VN') + ' ký tự' : n.toLocaleString('vi-VN') + ' ký tự';
-      counter.classList.toggle('is-over', Boolean(limit && n > limit));
+      var over = n > googleLimit;
+      counter.textContent =
+        n.toLocaleString('vi-VN') + ' ký tự' + (over ? '. Google Maps chỉ nhận ' + googleLimit.toLocaleString('vi-VN') + ' ký tự: khi đăng lên Google, hãy rút gọn.' : '');
+      counter.classList.toggle('is-over', over);
     };
 
-    var updateChannel = function () {
-      var ch = channel();
-      var keep = formatSel.value || formatSel.getAttribute('data-current');
-      formatSel.innerHTML = '';
-      (formats[ch] || []).forEach(function (f) {
-        var o = document.createElement('option');
-        o.textContent = f;
-        if (f === keep) o.selected = true;
-        formatSel.appendChild(o);
-      });
-      tip.textContent = tips[ch] || '';
-      updateCounter();
-    };
-
-    form.querySelectorAll('input[name="channel"]').forEach(function (r) {
-      r.addEventListener('change', updateChannel);
-    });
     caption.addEventListener('input', updateCounter);
     updateCounter();
 

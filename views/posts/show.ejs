@@ -1,6 +1,7 @@
 <%- include('../partials/top') %>
 <%
-  const ch = C.CHANNELS[post.channel];
+  const editMetrics = can('post:publish') && post.status === 'published';
+  const val = (v) => (v == null ? '' : v);
   const steps = ['draft', 'pending', 'scheduled', 'published'];
   const at = steps.indexOf(post.status);
   const fullText = [post.caption, post.hashtags].filter(Boolean).join('\n\n');
@@ -10,7 +11,6 @@
     <p class="crumbs"><a href="/posts">Bài đăng</a></p>
     <h1><%= post.title %></h1>
     <p class="sub">
-      <%- include('../partials/chips', { kind: 'channel', value: post.channel }) %>
       <%- include('../partials/chips', { kind: 'status', value: post.status }) %>
       <% if (post.format) { %><span class="muted"><%= post.format %></span><% } %>
     </p>
@@ -50,7 +50,7 @@
     <% } %>
     <% if (post.caption) { %><div class="caption"><%= post.caption %></div><% } else { %><p class="empty">Chưa có nội dung.</p><% } %>
     <% if (post.hashtags) { %><p class="tags"><%= post.hashtags %></p><% } %>
-    <p class="muted small"><%= post.caption ? post.caption.length.toLocaleString('vi-VN') : 0 %> ký tự<%= ch.limit ? ' trên tối đa ' + ch.limit.toLocaleString('vi-VN') : '' %></p>
+    <p class="muted small"><%= post.caption ? post.caption.length.toLocaleString('vi-VN') : 0 %> ký tự<%= post.caption && post.caption.length > C.GOOGLE_LIMIT ? '. Google Maps chỉ nhận ' + C.GOOGLE_LIMIT.toLocaleString('vi-VN') + ' ký tự, nhớ rút gọn khi đăng lên Google.' : '' %></p>
     <% if (post.notes) { %><div class="note"><strong>Ghi chú cho team:</strong> <%= post.notes %></div><% } %>
   </section>
 
@@ -62,7 +62,6 @@
         <dt>Người soạn</dt><dd><%= post.author_name || '' %></dd>
         <% if (post.reviewer_name && post.status !== 'draft') { %><dt>Người duyệt</dt><dd><%= post.reviewer_name %></dd><% } %>
         <% if (post.published_at) { %><dt>Đã đăng lúc</dt><dd><%= d.dmyhm(post.published_at) %></dd><% } %>
-        <% if (post.published_url) { %><dt>Link</dt><dd><a href="<%= post.published_url %>" target="_blank" rel="noopener">Mở bài trên <%= ch.name %></a></dd><% } %>
       </dl>
     </section>
 
@@ -92,51 +91,12 @@
       </section>
     <% } %>
 
-    <% if (post.status === 'scheduled' && can('post:publish')) { %>
-      <section class="panel stack">
-        <h2>Đã đăng lên <%= ch.name %>?</h2>
-        <form method="post" action="/posts/<%= post.id %>/publish" class="stack">
-          <input type="hidden" name="_csrf" value="<%= csrf %>">
-          <label class="field"><span>Link bài đã đăng</span><input type="url" name="url" placeholder="https://"></label>
-          <button class="btn btn-primary btn-block" type="submit"><%- icon('check') %> Đánh dấu đã đăng</button>
-        </form>
-      </section>
-    <% } %>
-
-    <% if (post.status === 'published') { %>
-      <section class="panel stack">
-        <h2>Kết quả</h2>
-        <% if (can('post:publish')) { %>
-          <form method="post" action="/posts/<%= post.id %>/metrics" class="stack">
-            <input type="hidden" name="_csrf" value="<%= csrf %>">
-            <div class="row-2">
-              <label class="field"><span>Lượt xem</span><input type="number" min="0" name="views" value="<%= post.views %>"></label>
-              <label class="field"><span>Lượt thích</span><input type="number" min="0" name="likes" value="<%= post.likes %>"></label>
-              <label class="field"><span>Bình luận</span><input type="number" min="0" name="comments" value="<%= post.comments %>"></label>
-              <label class="field"><span>Chia sẻ</span><input type="number" min="0" name="shares" value="<%= post.shares %>"></label>
-            </div>
-            <label class="field"><span>Link bài</span><input type="url" name="url" value="<%= post.published_url || '' %>" placeholder="https://"></label>
-            <button class="btn btn-block" type="submit">Lưu số liệu</button>
-          </form>
-        <% } else { %>
-          <dl class="kv">
-            <dt>Lượt xem</dt><dd><%= num(post.views) %></dd><dt>Lượt thích</dt><dd><%= num(post.likes) %></dd>
-            <dt>Bình luận</dt><dd><%= num(post.comments) %></dd><dt>Chia sẻ</dt><dd><%= num(post.shares) %></dd>
-          </dl>
-        <% } %>
-      </section>
-    <% } %>
-
     <% if (can('post:create')) { %>
       <section class="panel stack">
-        <h2>Dùng lại cho kênh khác</h2>
-        <form method="post" action="/posts/<%= post.id %>/duplicate" class="inline-form">
+        <h2>Dùng lại bài này</h2>
+        <form method="post" action="/posts/<%= post.id %>/duplicate">
           <input type="hidden" name="_csrf" value="<%= csrf %>">
-          <label class="sr-only" for="dup-ch">Kênh</label>
-          <select id="dup-ch" name="channel">
-            <% for (const c of Object.values(C.CHANNELS)) { if (c.key !== post.channel) { %><option value="<%= c.key %>"><%= c.name %></option><% } } %>
-          </select>
-          <button class="btn" type="submit">Tạo bản nháp</button>
+          <button class="btn btn-block" type="submit">Nhân bản thành bài nháp mới</button>
         </form>
       </section>
     <% } %>
@@ -149,4 +109,45 @@
     <% } %>
   </aside>
 </div>
+
+<section class="panel panel-flush post-channels">
+  <div class="panel-head pad">
+    <h2>Trên các kênh</h2>
+    <span class="muted small"><%= post.status === 'published' ? 'Tổng: ' + num(post.views) + ' lượt xem, ' + num(Number(post.likes) + Number(post.comments) + Number(post.shares)) + ' tương tác' : 'Cùng nội dung, đăng lên cả 4 kênh' %></span>
+  </div>
+  <form method="post" action="/posts/<%= post.id %>/<%= post.status === 'scheduled' ? 'publish' : 'metrics' %>">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <table class="table table-rows">
+      <thead><tr><th>Kênh</th><th>Link bài</th><th class="num">Xem</th><th class="num">Thích</th><th class="num">Bình luận</th><th class="num">Chia sẻ</th></tr></thead>
+      <tbody>
+        <% for (const c of channels) { const meta = C.CHANNELS[c.channel]; %>
+          <tr>
+            <td><%- include('../partials/chips', { kind: 'channel', value: c.channel }) %></td>
+            <% if (editMetrics || (post.status === 'scheduled' && can('post:publish'))) { %>
+              <td><label class="sr-only" for="url-<%= c.channel %>">Link trên <%= meta.name %></label><input id="url-<%= c.channel %>" class="input-sm" type="url" name="url_<%= c.channel %>" value="<%= c.published_url || '' %>" placeholder="Dán link bài trên <%= meta.name %>"></td>
+            <% } else { %>
+              <td><% if (c.published_url) { %><a href="<%= c.published_url %>" target="_blank" rel="noopener">Mở bài</a><% } else { %><span class="muted">Chưa có link</span><% } %></td>
+            <% } %>
+            <% for (const m of ['views', 'likes', 'comments', 'shares']) { %>
+              <td class="num">
+                <% if (editMetrics) { %><label class="sr-only" for="<%= m %>-<%= c.channel %>"><%= m %> <%= meta.name %></label><input id="<%= m %>-<%= c.channel %>" class="input-num" type="number" min="0" name="<%= m %>_<%= c.channel %>" value="<%= val(c[m]) %>"><% } else { %><%= c[m] == null ? '—' : num(c[m]) %><% } %>
+              </td>
+            <% } %>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+    <% if (post.status === 'scheduled' && can('post:publish')) { %>
+      <div class="pad post-channels-foot">
+        <button class="btn btn-primary" type="submit"><%- icon('check') %> Đánh dấu đã đăng</button>
+        <span class="hint">Link có thể dán sau. Với Facebook và TikTok đã kết nối, lượt thích, bình luận, chia sẻ tự cập nhật theo link.</span>
+      </div>
+    <% } else if (editMetrics) { %>
+      <div class="pad post-channels-foot">
+        <button class="btn" type="submit">Lưu link và số liệu</button>
+        <span class="hint">Kênh đã kết nối tự cập nhật số liệu theo link; ô nào để trống thì bỏ qua.</span>
+      </div>
+    <% } %>
+  </form>
+</section>
 <%- include('../partials/bottom') %>

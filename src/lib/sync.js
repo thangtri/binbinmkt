@@ -4,6 +4,7 @@ const db = require('../db');
 const dates = require('./dates');
 const { encrypt, decrypt } = require('./secret');
 const { logActivity } = require('./util');
+const postChannels = require('./post-channels');
 
 const connectors = {
   google: require('./connectors/google'),
@@ -67,20 +68,21 @@ function normalizeUrl(u) {
 }
 
 async function updatePostMetrics(channel, items) {
-  const published = await db.all(`SELECT id, published_url FROM posts WHERE channel = ? AND status = 'published' AND published_url IS NOT NULL`, [channel]);
-  const byUrl = new Map(published.map((p) => [normalizeUrl(p.published_url), p.id]));
+  const rows = await db.all(
+    `SELECT pc.post_id, pc.published_url FROM post_channels pc JOIN posts p ON p.id = pc.post_id
+     WHERE pc.channel = ? AND p.status = 'published' AND pc.published_url IS NOT NULL`,
+    [channel]
+  );
+  const byUrl = new Map(rows.map((r) => [normalizeUrl(r.published_url), r.post_id]));
   let matched = 0;
   for (const it of items || []) {
-    const id = byUrl.get(normalizeUrl(it.url));
-    if (!id) continue;
-    await db.run('UPDATE posts SET views = COALESCE(?, views), likes = ?, comments = ?, shares = ?, updated_at = ? WHERE id = ?', [
-      it.views,
-      it.likes,
-      it.comments,
-      it.shares,
-      dates.now(),
-      id,
-    ]);
+    const postId = byUrl.get(normalizeUrl(it.url));
+    if (!postId) continue;
+    await db.run(
+      'UPDATE post_channels SET views = COALESCE(?, views), likes = ?, comments = ?, shares = ?, updated_at = ? WHERE post_id = ? AND channel = ?',
+      [it.views, it.likes, it.comments, it.shares, dates.now(), postId, channel]
+    );
+    await postChannels.recalcTotals(postId);
     matched++;
   }
   return matched;

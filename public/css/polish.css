@@ -754,3 +754,53 @@ body.legal-page {
   align-items: start;
   max-width: 1100px;
 }
+
+/* Bài đăng: số liệu theo từng kênh */
+.all-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 2px 0 0;
+}
+.post-channels .input-sm {
+  min-height: 34px;
+  padding: 5px 9px;
+  font-size: 0.875rem;
+  min-width: 220px;
+}
+.post-channels .input-num {
+  min-height: 34px;
+  width: 92px;
+  padding: 5px 8px;
+  text-align: right;
+}
+.post-channels td {
+  vertical-align: middle;
+}
+.post-channels-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+}
+
+/* Bảng lịch: một hàng bài đăng chung cho các kênh */
+.b-label-posts {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+}
+.b-label-posts small {
+  color: var(--ink-3);
+  font-weight: 400;
+  font-size: 0.75rem;
+}
+.b-cell-posts {
+  min-height: 190px;
+}
+
+.post-preview .caption {
+  overflow-wrap: anywhere;
+}

@@ -29,15 +29,11 @@ router.get(
     const pendingCount = (await db.get(`SELECT COUNT(*) AS n FROM posts WHERE status = 'pending'`)).n;
 
     const weekRows = await db.all(
-      `SELECT channel, status, COUNT(*) AS n FROM posts WHERE scheduled_at BETWEEN ? AND ? GROUP BY channel, status`,
+      `SELECT status, COUNT(*) AS n FROM posts WHERE scheduled_at BETWEEN ? AND ? GROUP BY status`,
       [weekStart + ' 00:00:00', weekEnd + ' 23:59:59']
     );
     const week = {};
-    for (const r of weekRows) {
-      week[r.channel] = week[r.channel] || { total: 0, published: 0 };
-      week[r.channel].total += Number(r.n);
-      if (r.status === 'published') week[r.channel].published += Number(r.n);
-    }
+    for (const r of weekRows) week[r.status] = Number(r.n);
 
     const publishedMonth = (
       await db.get(`SELECT COUNT(*) AS n FROM posts WHERE status = 'published' AND published_at >= ?`, [monthStart + ' 00:00:00'])

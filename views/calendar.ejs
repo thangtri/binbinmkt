@@ -12,7 +12,7 @@
   </div>
   <div class="toolbar">
     <div class="seg" role="group" aria-label="Kiểu xem">
-      <a href="/calendar?view=board" class="<%= view === 'board' ? 'is-on' : '' %>"<%- view === 'board' ? ' aria-current="page"' : '' %>>Bảng kênh</a>
+      <a href="/calendar?view=board" class="<%= view === 'board' ? 'is-on' : '' %>"<%- view === 'board' ? ' aria-current="page"' : '' %>>Bảng 2 tuần</a>
       <a href="/calendar?view=month" class="<%= view === 'month' ? 'is-on' : '' %>"<%- view === 'month' ? ' aria-current="page"' : '' %>>Tháng</a>
     </div>
     <div class="seg" role="group" aria-label="Chuyển thời gian">
@@ -21,9 +21,9 @@
         <a href="/calendar?view=board">Hôm nay</a>
         <a href="/calendar?view=board&start=<%= next %>" aria-label="Tuần sau"><%- icon('right') %></a>
       <% } else { %>
-        <a href="/calendar?view=month&m=<%= prevM %><%= channel ? '&channel=' + channel : '' %>" aria-label="Tháng trước"><%- icon('left') %></a>
-        <a href="/calendar?view=month<%= channel ? '&channel=' + channel : '' %>">Tháng này</a>
-        <a href="/calendar?view=month&m=<%= nextM %><%= channel ? '&channel=' + channel : '' %>" aria-label="Tháng sau"><%- icon('right') %></a>
+        <a href="/calendar?view=month&m=<%= prevM %>" aria-label="Tháng trước"><%- icon('left') %></a>
+        <a href="/calendar?view=month">Tháng này</a>
+        <a href="/calendar?view=month&m=<%= nextM %>" aria-label="Tháng sau"><%- icon('right') %></a>
       <% } %>
     </div>
   </div>
@@ -56,31 +56,18 @@
         <% if (!events.length) { %><span class="b-noevents">Không có sự kiện trong 2 tuần này</span><% } %>
       </div>
 
-      <% for (const ch of Object.values(C.CHANNELS)) { %>
-        <a class="b-label b-label-ch ch-<%= ch.key %>" href="/channels/<%= ch.key %>"><b><%= ch.code %></b><span><%= ch.name %></span></a>
-        <% days.forEach((day, i) => { const items = cells[ch.key + '|' + day] || []; %>
-          <div class="b-cell<%= day === today ? ' is-today' : '' %><%= day < today ? ' is-past' : '' %>" data-date="<%= day %>" data-channel="<%= ch.key %>">
-            <% for (const p of items) { %><%- chip(p) %><% } %>
-            <% if (can('post:create') && day >= today) { %>
-              <a class="b-add" href="/posts/new?date=<%= day %>&channel=<%= ch.key %>" aria-label="Soạn bài <%= ch.name %> ngày <%= d.dm(day) %>"><%- icon('plus') %></a>
-            <% } %>
-          </div>
-        <% }) %>
-      <% } %>
+      <div class="b-label b-label-posts"><span>Bài đăng</span><small>cả 4 kênh</small></div>
+      <% days.forEach((day, i) => { const items = cells[day] || []; %>
+        <div class="b-cell b-cell-posts<%= day === today ? ' is-today' : '' %><%= day < today ? ' is-past' : '' %>" data-date="<%= day %>">
+          <% for (const p of items) { %><%- chip(p) %><% } %>
+          <% if (can('post:create') && day >= today) { %>
+            <a class="b-add" href="/posts/new?date=<%= day %>" aria-label="Soạn bài ngày <%= d.dm(day) %>"><%- icon('plus') %></a>
+          <% } %>
+        </div>
+      <% }) %>
     </div>
   </div>
 <% } else { %>
-  <form class="filters" method="get" action="/calendar">
-    <input type="hidden" name="view" value="month">
-    <input type="hidden" name="m" value="<%= m %>">
-    <label class="field field-inline"><span>Kênh</span>
-      <select name="channel" data-autosubmit>
-        <option value="">Tất cả kênh</option>
-        <% for (const ch of Object.values(C.CHANNELS)) { %><option value="<%= ch.key %>"<%= channel === ch.key ? ' selected' : '' %>><%= ch.name %></option><% } %>
-      </select>
-    </label>
-    <noscript><button class="btn" type="submit">Lọc</button></noscript>
-  </form>
   <div class="month" data-board data-csrf="<%= csrf %>">
     <% for (const wd of ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']) { %><div class="m-head"><%= wd %></div><% } %>
     <% for (const wk of weeks) { for (const day of wk) {
@@ -88,10 +75,10 @@
       <div class="m-cell<%= out ? ' is-out' : '' %><%= day === today ? ' is-today' : '' %>" data-date="<%= day %>">
         <div class="m-date">
           <span><%= Number(day.slice(8, 10)) %></span>
-          <% if (can('post:create') && day >= today) { %><a class="b-add" href="/posts/new?date=<%= day %><%= channel ? '&channel=' + channel : '' %>" aria-label="Soạn bài ngày <%= d.dm(day) %>"><%- icon('plus') %></a><% } %>
+          <% if (can('post:create') && day >= today) { %><a class="b-add" href="/posts/new?date=<%= day %>" aria-label="Soạn bài ngày <%= d.dm(day) %>"><%- icon('plus') %></a><% } %>
         </div>
         <% for (const ev of evs) { %><span class="m-ev ev-<%= ev.kind %>" title="<%= ev.title %>"><%= ev.title %></span><% } %>
-        <% items.slice(0, 4).forEach((p) => { %><%- chip(p).replace('class="chip ', `class="chip chip-ch-${p.channel} `) %><% }) %>
+        <% items.slice(0, 4).forEach((p) => { %><%- chip(p) %><% }) %>
         <% if (items.length > 4) { %><a class="m-more" href="/calendar?view=board&start=<%= day %>">+<%= items.length - 4 %> bài</a><% } %>
       </div>
     <% } } %>

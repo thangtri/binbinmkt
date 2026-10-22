@@ -1,7 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const dates = require('../lib/dates');
-const { CHANNELS, STATUSES } = require('../lib/constants');
+const { CHANNELS, POST_FORMATS, STATUSES } = require('../lib/constants');
+const postChannels = require('../lib/post-channels');
 const { can, requirePerm } = require('../lib/auth');
 const upload = require('../lib/upload');
 const { h, flash, logActivity, str, int, safeUrl } = require('../lib/util');
@@ -50,13 +51,11 @@ async function eventOptions() {
 }
 
 function readForm(body) {
-  const channel = CHANNELS[body.channel] ? body.channel : '';
   const date = dates.isDate(body.date) ? body.date : '';
   const time = /^\d{2}:\d{2}$/.test(body.time || '') ? body.time : '09:00';
   return {
     title: str(body.title, 200),
-    channel,
-    format: str(body.format, 40),
+    format: POST_FORMATS.includes(body.format) ? body.format : POST_FORMATS[0],
     caption: str(body.caption, 60000),
     hashtags: str(body.hashtags, 2000),
     scheduled_at: date ? `${date} ${time}:00` : null,
@@ -67,9 +66,6 @@ function readForm(body) {
 
 function validate(p, intent) {
   if (!p.title) return 'Hãy đặt tiêu đề cho bài.';
-  if (!p.channel) return 'Hãy chọn kênh đăng.';
-  const limit = CHANNELS[p.channel].limit;
-  if (limit && p.caption.length > limit) return `${CHANNELS[p.channel].name} giới hạn ${limit} ký tự; nội dung đang có ${p.caption.length}.`;
   if ((intent === 'submit' || intent === 'approve') && !p.scheduled_at) return 'Cần chọn ngày đăng trước khi gửi duyệt.';
   return null;
 }
@@ -79,14 +75,10 @@ router.get(
   h(async (req, res) => {
     const where = [];
     const params = [];
-    const { status, channel, q } = req.query;
+    const { status, q } = req.query;
     if (STATUSES[status]) {
       where.push('p.status = ?');
       params.push(status);
-    }
-    if (CHANNELS[channel]) {
-      where.push('p.channel = ?');
-      params.push(channel);
     }
     if (q) {
       where.push('(p.title LIKE ? OR p.caption LIKE ?)');
@@ -119,8 +111,7 @@ router.get(
   h(async (req, res) => {
     const post = {
       title: '',
-      channel: CHANNELS[req.query.channel] ? req.query.channel : 'facebook',
-      format: '',
+      format: POST_FORMATS[0],
       caption: '',
       hashtags: '#BinBinHotel',
       scheduled_at: dates.isDate(req.query.date) ? `${req.query.date} 09:00:00` : null,
@@ -156,10 +147,11 @@ router.post(
     const r = await db.run(
       `INSERT INTO posts (title, channel, format, caption, hashtags, media_path, scheduled_at, status, event_id, author_id, notes, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)`,
-      [p.title, p.channel, p.format, p.caption, p.hashtags, req.file ? upload.relPath(req.file) : null, p.scheduled_at, p.event_id, req.user.id, p.notes, now, now]
+      [p.title, 'all', p.format, p.caption, p.hashtags, req.file ? upload.relPath(req.file) : null, p.scheduled_at, p.event_id, req.user.id, p.notes, now, now]
     );
     await afterSave(req, r.insertId, intent, 'draft');
-    await logActivity(req.user, 'post.create', 'post', r.insertId, `${CHANNELS[p.channel].name}: ${p.title}`);
+    await postChannels.ensure(r.insertId);
+    await logActivity(req.user, 'post.create', 'post', r.insertId, p.title);
     flash(req, 'success', intent === 'submit' ? 'Đã lưu và gửi duyệt.' : intent === 'approve' ? 'Đã lưu và duyệt bài.' : 'Đã lưu bản nháp.');
     res.redirect(`/posts/${r.insertId}`);
   })
@@ -172,6 +164,7 @@ router.get(
     res.render('posts/show', {
       title: post.title,
       post,
+      channels: await postChannels.list(post.id),
       canEdit: canEdit(req.user, post),
       canDelete: canDelete(req.user, post),
     });
@@ -209,9 +202,9 @@ router.post(
     let status = post.status;
     if (req.user.role !== 'admin' && status === 'scheduled') status = 'pending';
     await db.run(
-      `UPDATE posts SET title = ?, channel = ?, format = ?, caption = ?, hashtags = ?, media_path = ?, scheduled_at = ?,
+      `UPDATE posts SET title = ?, format = ?, caption = ?, hashtags = ?, media_path = ?, scheduled_at = ?,
        event_id = ?, notes = ?, status = ?, updated_at = ? WHERE id = ?`,
-      [p.title, p.channel, p.format, p.caption, p.hashtags, media, p.scheduled_at, p.event_id, p.notes, status, dates.now(), post.id]
+      [p.title, p.format, p.caption, p.hashtags, media, p.scheduled_at, p.event_id, p.notes, status, dates.now(), post.id]
     );
     await afterSave(req, post.id, intent, status);
     await logActivity(req.user, 'post.update', 'post', post.id, p.title);
@@ -281,6 +274,14 @@ router.post(
   })
 );
 
+// Link của bài trên từng kênh: url_facebook, url_tiktok, url_google, url_zalo
+async function saveUrls(postId, body) {
+  for (const ch of Object.keys(CHANNELS)) {
+    if (body[`url_${ch}`] === undefined) continue;
+    await postChannels.update(postId, ch, { published_url: safeUrl(body[`url_${ch}`]) || null });
+  }
+}
+
 router.post(
   '/:id/publish',
   requirePerm('post:publish'),
@@ -289,34 +290,34 @@ router.post(
     if (post.status !== 'scheduled') {
       flash(req, 'error', 'Chỉ bài đã duyệt mới đánh dấu đã đăng được.');
     } else {
-      await db.run(`UPDATE posts SET status = 'published', published_at = ?, published_url = ?, updated_at = ? WHERE id = ?`, [
-        dates.now(),
-        safeUrl(req.body.url) || null,
-        dates.now(),
-        post.id,
-      ]);
+      await db.run(`UPDATE posts SET status = 'published', published_at = ?, updated_at = ? WHERE id = ?`, [dates.now(), dates.now(), post.id]);
+      await saveUrls(post.id, req.body);
+      await postChannels.recalcTotals(post.id);
       await logActivity(req.user, 'post.publish', 'post', post.id, post.title);
-      flash(req, 'success', 'Đã đánh dấu đã đăng.');
+      flash(req, 'success', 'Đã đánh dấu đã đăng. Dán link bài trên từng kênh để hệ thống tự cập nhật lượt thích, bình luận.');
     }
     res.redirect(req.body.back === 'dashboard' ? '/' : `/posts/${post.id}`);
   })
 );
 
+// Nhập link và số liệu theo từng kênh (số liệu Facebook, TikTok tự cập nhật nếu kênh đã kết nối)
 router.post(
   '/:id/metrics',
   requirePerm('post:publish'),
   h(async (req, res) => {
     const post = await load(req.params.id);
-    await db.run(`UPDATE posts SET views = ?, likes = ?, comments = ?, shares = ?, published_url = ?, updated_at = ? WHERE id = ?`, [
-      Math.max(0, int(req.body.views)),
-      Math.max(0, int(req.body.likes)),
-      Math.max(0, int(req.body.comments)),
-      Math.max(0, int(req.body.shares)),
-      safeUrl(req.body.url) || post.published_url,
-      dates.now(),
-      post.id,
-    ]);
-    flash(req, 'success', 'Đã cập nhật số liệu.');
+    await saveUrls(post.id, req.body);
+    const n = (v) => (String(v ?? '').trim() === '' ? null : Math.max(0, int(v)));
+    for (const ch of Object.keys(CHANNELS)) {
+      const fields = {};
+      for (const m of ['views', 'likes', 'comments', 'shares']) {
+        if (req.body[`${m}_${ch}`] !== undefined) fields[m] = n(req.body[`${m}_${ch}`]);
+      }
+      await postChannels.update(post.id, ch, fields);
+    }
+    await postChannels.recalcTotals(post.id);
+    await db.run('UPDATE posts SET updated_at = ? WHERE id = ?', [dates.now(), post.id]);
+    flash(req, 'success', 'Đã lưu link và số liệu.');
     res.redirect(`/posts/${post.id}`);
   })
 );
@@ -341,15 +342,15 @@ router.post(
   requirePerm('post:create'),
   h(async (req, res) => {
     const post = await load(req.params.id);
-    const channel = CHANNELS[req.body.channel] ? req.body.channel : post.channel;
     const now = dates.now();
     const r = await db.run(
       `INSERT INTO posts (title, channel, format, caption, hashtags, media_path, scheduled_at, status, event_id, author_id, notes, created_at, updated_at)
-       VALUES (?, ?, NULL, ?, ?, NULL, ?, 'draft', ?, ?, ?, ?, ?)`,
-      [post.title, channel, post.caption, post.hashtags, post.scheduled_at, post.event_id, req.user.id, post.notes, now, now]
+       VALUES (?, 'all', ?, ?, ?, NULL, NULL, 'draft', ?, ?, ?, ?, ?)`,
+      [`${post.title} (bản sao)`, post.format, post.caption, post.hashtags, post.event_id, req.user.id, post.notes, now, now]
     );
-    await logActivity(req.user, 'post.create', 'post', r.insertId, `${CHANNELS[channel].name}: ${post.title} (bản sao)`);
-    flash(req, 'success', `Đã tạo bản nháp cho ${CHANNELS[channel].name}. Hãy chỉnh nội dung cho hợp kênh.`);
+    await postChannels.ensure(r.insertId);
+    await logActivity(req.user, 'post.create', 'post', r.insertId, `${post.title} (bản sao)`);
+    flash(req, 'success', 'Đã tạo bản sao ở dạng nháp. Chọn ngày đăng mới và chỉnh nội dung nếu cần.');
     res.redirect(`/posts/${r.insertId}/edit`);
   })
 );
@@ -359,6 +360,7 @@ router.post(
   h(async (req, res) => {
     const post = await load(req.params.id);
     if (!canDelete(req.user, post)) return requirePerm('__never__')(req, res);
+    await db.run('DELETE FROM post_channels WHERE post_id = ?', [post.id]);
     await db.run('DELETE FROM posts WHERE id = ?', [post.id]);
     upload.remove(post.media_path);
     await logActivity(req.user, 'post.delete', 'post', post.id, post.title);

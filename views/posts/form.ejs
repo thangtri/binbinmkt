@@ -4,9 +4,6 @@
   const date = post.scheduled_at ? post.scheduled_at.slice(0, 10) : '';
   const time = post.scheduled_at ? post.scheduled_at.slice(11, 16) : '09:00';
   const action = (isNew ? '/posts' : '/posts/' + post.id) + '?_csrf=' + csrf;
-  const formats = Object.fromEntries(Object.values(C.CHANNELS).map((c) => [c.key, c.formats]));
-  const limits = Object.fromEntries(Object.values(C.CHANNELS).map((c) => [c.key, c.limit || 0]));
-  const tips = Object.fromEntries(Object.values(C.CHANNELS).map((c) => [c.key, c.tips]));
 %>
 <header class="page-head">
   <div>
@@ -21,7 +18,7 @@
 <% } %>
 
 <form method="post" action="<%= action %>" enctype="multipart/form-data" class="editor"
-      data-post-form data-formats="<%= JSON.stringify(formats) %>" data-limits="<%= JSON.stringify(limits) %>" data-tips="<%= JSON.stringify(tips) %>">
+      data-post-form data-google-limit="<%= C.GOOGLE_LIMIT %>">
   <input type="hidden" name="_csrf" value="<%= csrf %>">
   <div class="editor-main panel">
     <label class="field">
@@ -31,16 +28,9 @@
     </label>
 
     <div class="field">
-      <span id="ch-label">Kênh đăng</span>
-      <div class="ch-pick" role="radiogroup" aria-labelledby="ch-label">
-        <% for (const ch of Object.values(C.CHANNELS)) { %>
-          <label class="ch-option ch-<%= ch.key %>">
-            <input type="radio" name="channel" value="<%= ch.key %>"<%= post.channel === ch.key ? ' checked' : '' %> required>
-            <span><b><%= ch.code %></b><%= ch.name %></span>
-          </label>
-        <% } %>
-      </div>
-      <small data-tip><%= C.CHANNELS[post.channel] ? C.CHANNELS[post.channel].tips : '' %></small>
+      <span>Đăng lên</span>
+      <p class="all-channels"><% for (const ch of Object.values(C.CHANNELS)) { %><%- include('../partials/chips', { kind: 'channel', value: ch.key }) %><% } %></p>
+      <small>Cùng một nội dung cho cả 4 kênh. Sau khi đăng, dán link từng kênh để theo dõi số liệu.</small>
     </div>
 
     <label class="field">
@@ -80,8 +70,8 @@
         <label class="field"><span>Giờ</span><input type="time" name="time" value="<%= time %>"></label>
       </div>
       <label class="field"><span>Định dạng</span>
-        <select name="format" data-format data-current="<%= post.format || '' %>">
-          <% for (const f of (C.CHANNELS[post.channel] || C.CHANNELS.facebook).formats) { %>
+        <select name="format">
+          <% for (const f of C.POST_FORMATS) { %>
             <option<%= post.format === f ? ' selected' : '' %>><%= f %></option>
           <% } %>
         </select>

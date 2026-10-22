@@ -7,8 +7,8 @@
 | Mục | Làm được gì |
 |---|---|
 | **Tổng quan** | Bài cần đăng hôm nay (đánh dấu đã đăng ngay tại chỗ), bài chờ duyệt, sự kiện 45 ngày tới và cảnh báo sự kiện chưa có bài, số bài trong tuần theo kênh, kết quả email gần nhất, hoạt động gần đây. |
-| **Lịch đăng bài** | *Bảng kênh*: 2 tuần, mỗi kênh một hàng, sự kiện là các thanh kéo dài qua nhiều ngày; kéo thả bài sang ngày khác. *Lịch tháng*: lọc theo kênh. Bấm dấu + ở một ô để soạn bài cho đúng ngày và kênh đó. |
-| **Bài đăng** | Soạn bài theo kênh (định dạng, gợi ý, đếm ký tự), đính kèm ảnh/video tới 50 MB, gắn với sự kiện. Quy trình: Nháp → Chờ duyệt → Đã duyệt → Đã đăng. Quản trị viên duyệt hoặc trả về kèm góp ý. Nút "Sao chép để đăng", nhân bản bài sang kênh khác, ghi link và số liệu (xem, thích, bình luận, chia sẻ) sau khi đăng. |
+| **Lịch đăng bài** | *Bảng 2 tuần*: sự kiện là các thanh kéo dài qua nhiều ngày, bên dưới là bài đăng từng ngày; kéo thả bài sang ngày khác. *Lịch tháng*. Bấm dấu + ở một ô để soạn bài cho đúng ngày đó. |
+| **Bài đăng** | Một bài, một nội dung, đăng lên cả 4 kênh; link và số liệu (xem, thích, bình luận, chia sẻ) ghi riêng từng kênh. Đếm ký tự, nhắc giới hạn 1.500 ký tự của Google Maps, đính kèm ảnh/video tới 50 MB, gắn với sự kiện. Quy trình: Nháp → Chờ duyệt → Đã duyệt → Đã đăng. Quản trị viên duyệt hoặc trả về kèm góp ý. Nút "Sao chép để đăng", nhân bản bài. |
 | **Sự kiện** | Lịch lễ, Tết Việt Nam có sẵn; thêm mùa du lịch, ưu đãi của khách sạn, sự kiện địa phương. Sự kiện có thể lặp lại hằng năm. |
 | **Kênh** | Tự động lấy số liệu: dán link Google Maps (điểm, số đánh giá, đánh giá mới); kết nối Facebook Page, TikTok, Zalo OA (người theo dõi, tiếp cận, tương tác, số liệu từng bài). Cập nhật mỗi 12 giờ; AI (Claude) viết nhận xét và đề xuất mỗi tuần. |
 | **Email marketing** | Danh bạ (thêm tay, nhập/xuất CSV, gắn nhóm), chiến dịch HTML với `{{ten}}`, xem trước, gửi thử, gửi theo nhóm; thống kê nhận/mở/nhấp/trả về qua webhook Brevo; trang huỷ nhận email cho khách. |

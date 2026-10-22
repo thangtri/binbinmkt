@@ -32,6 +32,11 @@ const CHANNELS = {
   },
 };
 
+// Một bài đăng chung cho tất cả kênh
+const POST_FORMATS = ['Bài viết', 'Album ảnh', 'Video ngắn', 'Reels / Story', 'Livestream', 'Ưu đãi'];
+// Google Maps chỉ nhận bài cập nhật tối đa 1.500 ký tự
+const GOOGLE_LIMIT = 1500;
+
 const STATUSES = {
   draft: { key: 'draft', label: 'Nháp' },
   pending: { key: 'pending', label: 'Chờ duyệt' },
@@ -53,4 +58,4 @@ const ROLES = {
   viewer: { key: 'viewer', label: 'Chỉ xem', desc: 'Xem lịch, bài đăng và báo cáo.' },
 };
 
-module.exports = { CHANNELS, STATUSES, EVENT_KINDS, ROLES };
+module.exports = { CHANNELS, POST_FORMATS, GOOGLE_LIMIT, STATUSES, EVENT_KINDS, ROLES };

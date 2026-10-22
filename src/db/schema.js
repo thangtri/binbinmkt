@@ -186,6 +186,36 @@ const migrations = [
       'CREATE UNIQUE INDEX idx_users_username ON users (username)',
     ];
   },
+  // Một bài đăng lên tất cả các kênh; link và số liệu lưu riêng theo từng kênh
+  function postChannels({ id, tail }) {
+    return [
+      `CREATE TABLE post_channels (
+        id ${id},
+        post_id INT NOT NULL,
+        channel VARCHAR(20) NOT NULL,
+        published_url VARCHAR(500) NULL,
+        views INT NULL,
+        likes INT NULL,
+        comments INT NULL,
+        shares INT NULL,
+        updated_at DATETIME NULL
+      )${tail}`,
+      'CREATE UNIQUE INDEX idx_post_channels ON post_channels (post_id, channel)',
+      async () => {
+        const { CHANNELS } = require('../lib/constants');
+        for (const p of await db.all('SELECT * FROM posts')) {
+          for (const ch of Object.keys(CHANNELS)) {
+            const own = ch === p.channel;
+            await db.run(
+              'INSERT INTO post_channels (post_id, channel, published_url, views, likes, comments, shares, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+              [p.id, ch, own ? p.published_url : null, own ? p.views : null, own ? p.likes : null, own ? p.comments : null, own ? p.shares : null, p.updated_at]
+            );
+          }
+        }
+        await db.run(`UPDATE posts SET channel = 'all'`);
+      },
+    ];
+  },
 ];
 
 async function migrate() {

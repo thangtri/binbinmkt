@@ -1,8 +1,7 @@
 <%- include('partials/top') %>
 <%
   const firstName = user.name.trim();
-  const weekTotal = Object.values(week).reduce((s, w) => s + w.total, 0);
-  const activeChannels = Object.keys(week).length;
+  const weekTotal = Object.values(week).reduce((s, n) => s + n, 0);
   const pct = (a, b) => (b ? Math.round((a / b) * 100) + '%' : '—');
 %>
 <header class="welcome<%= hotelPhoto ? ' has-photo' : '' %>">
@@ -10,7 +9,7 @@
     <p class="date-line"><%= d.weekday(today, true) %>, <%= d.dmy(today) %></p>
     <h1>Chào <%= firstName %></h1>
     <p class="summary">
-      <% if (weekTotal) { %>Tuần này có <strong><%= weekTotal %> bài</strong> trên <%= activeChannels %> kênh.<% } else { %>Tuần này chưa có bài nào trên lịch.<% } %>
+      <% if (weekTotal) { %>Tuần này có <strong><%= weekTotal %> bài</strong> trên lịch.<% } else { %>Tuần này chưa có bài nào trên lịch.<% } %>
       <% if (pendingCount) { %><a href="/posts?status=pending"><strong><%= pendingCount %> bài</strong> đang chờ duyệt</a>.<% } else { %>Không có bài nào chờ duyệt.<% } %>
       Tháng này đã đăng <strong><%= publishedMonth %> bài</strong>.
     </p>
@@ -44,15 +43,13 @@
                 <small><%= late ? 'Trễ từ ' + d.dm(p.scheduled_at) : 'Hôm nay' %></small>
               </div>
               <div class="due-body">
-                <%- include('partials/chips', { kind: 'channel', value: p.channel }) %>
+                <span class="muted small"><%= p.format || 'Bài đăng' %>, cả 4 kênh</span>
                 <a href="/posts/<%= p.id %>" class="due-title"><%= p.title %></a>
               </div>
               <% if (can('post:publish')) { %>
                 <form method="post" action="/posts/<%= p.id %>/publish" class="due-action">
                   <input type="hidden" name="_csrf" value="<%= csrf %>">
                   <input type="hidden" name="back" value="dashboard">
-                  <label class="sr-only" for="url-<%= p.id %>">Link bài đã đăng</label>
-                  <input id="url-<%= p.id %>" type="url" name="url" placeholder="Dán link bài đã đăng">
                   <button class="btn btn-small" type="submit"><%- icon('check') %> Đã đăng</button>
                 </form>
               <% } %>
@@ -71,12 +68,11 @@
         <p class="empty">Không có bài nào chờ duyệt.</p>
       <% } else { %>
         <table class="table">
-          <thead><tr><th>Bài</th><th>Kênh</th><th>Ngày đăng</th><th class="hide-sm">Người soạn</th><% if (user.role === 'admin') { %><th><span class="sr-only">Duyệt</span></th><% } %></tr></thead>
+          <thead><tr><th>Bài</th><th>Ngày đăng</th><th class="hide-sm">Người soạn</th><% if (user.role === 'admin') { %><th><span class="sr-only">Duyệt</span></th><% } %></tr></thead>
           <tbody>
           <% for (const p of pending) { %>
             <tr>
               <td><a href="/posts/<%= p.id %>"><%= p.title %></a></td>
-              <td><%- include('partials/chips', { kind: 'channel', value: p.channel }) %></td>
               <td class="nowrap"><%= p.scheduled_at ? d.dmyhm(p.scheduled_at) : 'Chưa chọn' %></td>
               <td class="hide-sm"><%= p.author_name || '' %></td>
               <% if (user.role === 'admin') { %>
@@ -138,10 +134,10 @@
     <section class="panel">
       <div class="panel-head"><h2>Tuần <%= d.dm(weekStart) %> – <%= d.dm(weekEnd) %></h2></div>
       <table class="table table-compact">
-        <thead><tr><th>Kênh</th><th class="num">Bài</th><th class="num">Đã đăng</th></tr></thead>
+        <thead><tr><th>Trạng thái</th><th class="num">Số bài</th></tr></thead>
         <tbody>
-          <% for (const ch of Object.values(C.CHANNELS)) { const w = week[ch.key] || { total: 0, published: 0 }; %>
-            <tr><td><%- include('partials/chips', { kind: 'channel', value: ch.key }) %></td><td class="num"><%= w.total %></td><td class="num"><%= w.published %></td></tr>
+          <% for (const s of Object.values(C.STATUSES)) { %>
+            <tr><td><%- include('partials/chips', { kind: 'status', value: s.key }) %></td><td class="num"><%= week[s.key] || 0 %></td></tr>
           <% } %>
         </tbody>
       </table>

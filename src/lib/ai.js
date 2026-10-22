@@ -49,13 +49,14 @@ async function gather(channel) {
   );
   const since = dates.addDays(dates.today(), -45) + ' 00:00:00';
   const posts = await db.all(
-    `SELECT title, format, published_at, views, likes, comments, shares FROM posts
-     WHERE channel = ? AND status = 'published' AND published_at >= ? ORDER BY published_at DESC LIMIT 40`,
+    `SELECT p.title, p.format, p.published_at, pc.views, pc.likes, pc.comments, pc.shares
+     FROM posts p JOIN post_channels pc ON pc.post_id = p.id AND pc.channel = ?
+     WHERE p.status = 'published' AND p.published_at >= ? ORDER BY p.published_at DESC LIMIT 40`,
     [channel, since]
   );
   const upcoming = await db.all(
-    `SELECT title, format, status, scheduled_at FROM posts WHERE channel = ? AND status IN ('draft', 'pending', 'scheduled') AND scheduled_at >= ? ORDER BY scheduled_at LIMIT 15`,
-    [channel, dates.today() + ' 00:00:00']
+    `SELECT title, format, status, scheduled_at FROM posts WHERE status IN ('draft', 'pending', 'scheduled') AND scheduled_at >= ? ORDER BY scheduled_at LIMIT 15`,
+    [dates.today() + ' 00:00:00']
   );
   const { occurrences } = require('./events');
   const events = (await occurrences(dates.today(), dates.addDays(dates.today(), 45))).map((e) => ({ title: e.title, from: e.occ_start, to: e.occ_end }));

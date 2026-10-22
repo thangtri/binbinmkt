@@ -101,13 +101,15 @@ router.get(
       const primary = summarize(stats, metrics[0]);
       const reviews = ch.key === 'google' ? summarize(stats, metrics[1]) : null;
       const perf = await db.get(
-        `SELECT COUNT(*) AS posts, COALESCE(SUM(views), 0) AS views, COALESCE(SUM(likes + comments + shares), 0) AS interactions
-         FROM posts WHERE channel = ? AND status = 'published' AND published_at >= ?`,
+        `SELECT COUNT(*) AS posts, COALESCE(SUM(pc.views), 0) AS views,
+                COALESCE(SUM(COALESCE(pc.likes, 0) + COALESCE(pc.comments, 0) + COALESCE(pc.shares, 0)), 0) AS interactions
+         FROM posts p JOIN post_channels pc ON pc.post_id = p.id AND pc.channel = ?
+         WHERE p.status = 'published' AND p.published_at >= ?`,
         [ch.key, since]
       );
       const upcoming = await db.get(
-        `SELECT COUNT(*) AS n FROM posts WHERE channel = ? AND status IN ('pending', 'scheduled') AND scheduled_at >= ?`,
-        [ch.key, dates.now()]
+        `SELECT COUNT(*) AS n FROM posts WHERE status IN ('pending', 'scheduled') AND scheduled_at >= ?`,
+        [dates.now()]
       );
       rows.push({ ch, account, primary, reviews, perf, upcoming: Number(upcoming.n), conn: await connection(ch, account) });
     }
@@ -309,20 +311,22 @@ router.get(
 
     const since = dates.addDays(dates.today(), -30) + ' 00:00:00';
     const perf = await db.get(
-      `SELECT COUNT(*) AS posts, COALESCE(SUM(views), 0) AS views,
-              COALESCE(SUM(likes), 0) AS likes, COALESCE(SUM(comments), 0) AS comments, COALESCE(SUM(shares), 0) AS shares
-       FROM posts WHERE channel = ? AND status = 'published' AND published_at >= ?`,
+      `SELECT COUNT(*) AS posts, COALESCE(SUM(pc.views), 0) AS views,
+              COALESCE(SUM(pc.likes), 0) AS likes, COALESCE(SUM(pc.comments), 0) AS comments, COALESCE(SUM(pc.shares), 0) AS shares
+       FROM posts p JOIN post_channels pc ON pc.post_id = p.id AND pc.channel = ?
+       WHERE p.status = 'published' AND p.published_at >= ?`,
       [ch.key, since]
     );
     const upcoming = await db.all(
       `SELECT id, title, status, scheduled_at FROM posts
-       WHERE channel = ? AND status IN ('draft', 'pending', 'scheduled') AND scheduled_at >= ?
+       WHERE status IN ('draft', 'pending', 'scheduled') AND scheduled_at >= ?
        ORDER BY scheduled_at LIMIT 8`,
-      [ch.key, dates.today() + ' 00:00:00']
+      [dates.today() + ' 00:00:00']
     );
     const posts = await db.all(
-      `SELECT id, title, published_at, published_url, views, likes, comments, shares FROM posts
-       WHERE channel = ? AND status = 'published' ORDER BY published_at DESC LIMIT 10`,
+      `SELECT p.id, p.title, p.published_at, pc.published_url, pc.views, pc.likes, pc.comments, pc.shares
+       FROM posts p JOIN post_channels pc ON pc.post_id = p.id AND pc.channel = ?
+       WHERE p.status = 'published' ORDER BY p.published_at DESC LIMIT 10`,
       [ch.key]
     );
     const users = await db.all(`SELECT id, name FROM users WHERE active = 1 AND role IN ('admin', 'editor') ORDER BY name`);

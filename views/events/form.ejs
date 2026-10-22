@@ -36,7 +36,7 @@
         <% } else { %>
           <ul class="plain-list">
             <% for (const p of posts) { %>
-              <li><a href="/posts/<%= p.id %>"><%= p.title %></a> <%- include('../partials/chips', { kind: 'channel', value: p.channel }) %> <span class="muted small"><%= p.scheduled_at ? d.dm(p.scheduled_at) : '' %></span></li>
+              <li><a href="/posts/<%= p.id %>"><%= p.title %></a> <%- include('../partials/chips', { kind: 'status', value: p.status }) %> <span class="muted small"><%= p.scheduled_at ? d.dm(p.scheduled_at) : '' %></span></li>
             <% } %>
           </ul>
         <% } %>

@@ -14,12 +14,6 @@
 
 <form class="filters" method="get">
   <% if (query.status) { %><input type="hidden" name="status" value="<%= query.status %>"><% } %>
-  <label class="field field-inline"><span>Kênh</span>
-    <select name="channel" data-autosubmit>
-      <option value="">Tất cả kênh</option>
-      <% for (const ch of Object.values(C.CHANNELS)) { %><option value="<%= ch.key %>"<%= query.channel === ch.key ? ' selected' : '' %>><%= ch.name %></option><% } %>
-    </select>
-  </label>
   <label class="field field-inline field-grow"><span class="sr-only">Tìm</span>
     <input type="search" name="q" value="<%= query.q || '' %>" placeholder="Tìm theo tiêu đề hoặc nội dung">
   </label>
@@ -35,7 +29,7 @@
 <% } else { %>
   <div class="panel panel-flush">
     <table class="table table-rows">
-      <thead><tr><th>Ngày đăng</th><th>Bài</th><th>Kênh</th><th>Trạng thái</th><th>Người soạn</th></tr></thead>
+      <thead><tr><th>Ngày đăng</th><th>Bài</th><th>Định dạng</th><th>Trạng thái</th><th>Người soạn</th></tr></thead>
       <tbody>
       <% for (const p of posts) { %>
         <tr>
@@ -44,7 +38,7 @@
             <a href="/posts/<%= p.id %>" class="row-title"><%= p.title %></a>
             <% if (p.event_title) { %><small class="muted block">Cho sự kiện: <%= p.event_title %></small><% } %>
           </td>
-          <td><%- include('../partials/chips', { kind: 'channel', value: p.channel }) %></td>
+          <td class="muted"><%= p.format || '' %></td>
           <td><%- include('../partials/chips', { kind: 'status', value: p.status }) %></td>
           <td><%= p.author_name || '' %></td>
         </tr>

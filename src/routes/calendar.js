@@ -1,7 +1,6 @@
 const express = require('express');
 const db = require('../db');
 const dates = require('../lib/dates');
-const { CHANNELS } = require('../lib/constants');
 const { occurrences } = require('../lib/events');
 const { h } = require('../lib/util');
 
@@ -23,17 +22,11 @@ function assignLanes(items) {
   return lanes.length;
 }
 
-async function postsBetween(from, to, channel) {
-  const params = [from + ' 00:00:00', to + ' 23:59:59'];
-  let extra = '';
-  if (channel) {
-    extra = ' AND channel = ?';
-    params.push(channel);
-  }
+async function postsBetween(from, to) {
   return db.all(
-    `SELECT id, title, channel, status, scheduled_at, format FROM posts
-     WHERE scheduled_at BETWEEN ? AND ?${extra} ORDER BY scheduled_at`,
-    params
+    `SELECT id, title, status, scheduled_at, format FROM posts
+     WHERE scheduled_at BETWEEN ? AND ? ORDER BY scheduled_at`,
+    [from + ' 00:00:00', to + ' 23:59:59']
   );
 }
 
@@ -42,7 +35,6 @@ router.get(
   h(async (req, res) => {
     const today = dates.today();
     const view = req.query.view === 'month' ? 'month' : 'board';
-    const channel = CHANNELS[req.query.channel] ? req.query.channel : '';
 
     if (view === 'board') {
       const start = dates.startOfWeek(dates.isDate(req.query.start) ? req.query.start : today);
@@ -58,7 +50,7 @@ router.get(
 
       const cells = {};
       for (const p of await postsBetween(start, end)) {
-        const key = `${p.channel}|${p.scheduled_at.slice(0, 10)}`;
+        const key = p.scheduled_at.slice(0, 10);
         (cells[key] = cells[key] || []).push(p);
       }
 
@@ -74,7 +66,6 @@ router.get(
         events,
         eventLanes,
         cells,
-        channel,
       });
     }
 
@@ -86,7 +77,7 @@ router.get(
     const to = weeks[weeks.length - 1][6];
 
     const byDay = {};
-    for (const p of await postsBetween(from, to, channel)) {
+    for (const p of await postsBetween(from, to)) {
       const k = p.scheduled_at.slice(0, 10);
       (byDay[k] = byDay[k] || []).push(p);
     }
@@ -111,7 +102,6 @@ router.get(
       nextM,
       byDay,
       eventsByDay,
-      channel,
     });
   })
 );
