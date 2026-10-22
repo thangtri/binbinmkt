@@ -22,6 +22,37 @@ function validatePassword(pw) {
   return null;
 }
 
+// Tên đăng nhập: 3–30 ký tự, chữ thường không dấu, số, dấu chấm, gạch dưới, gạch ngang
+const USERNAME_RE = /^[a-z0-9](?:[a-z0-9._-]{1,28})[a-z0-9]$/;
+
+function normalizeUsername(s) {
+  return String(s || '').trim().toLowerCase();
+}
+
+function validateUsername(s) {
+  if (!USERNAME_RE.test(s)) {
+    return 'Tên đăng nhập dài 3–30 ký tự, chỉ gồm chữ thường không dấu, số, dấu chấm, gạch dưới hoặc gạch ngang, không bắt đầu hay kết thúc bằng dấu.';
+  }
+  return null;
+}
+
+// Gợi ý tên đăng nhập từ email (phần trước @), thêm số nếu đã có người dùng
+function suggestUsername(email, taken) {
+  let base = String(email || '')
+    .split('@')[0]
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, '')
+    .replace(/^[._-]+|[._-]+$/g, '')
+    .slice(0, 26);
+  if (base.length < 3) base = `user${base}`;
+  let name = base;
+  for (let n = 2; taken.has(name); n++) name = `${base}${n}`;
+  return name;
+}
+
 // Quyền theo vai trò. Admin làm được mọi việc.
 const PERMISSIONS = {
   editor: new Set([
@@ -47,7 +78,7 @@ async function loadUser(req, res, next) {
   req.user = null;
   const id = req.session?.uid;
   if (id) {
-    const user = await db.get('SELECT id, email, name, role, active FROM users WHERE id = ?', [id]);
+    const user = await db.get('SELECT id, username, email, name, role, active FROM users WHERE id = ?', [id]);
     if (user && user.active) req.user = user;
     else req.session = null;
   }
@@ -74,4 +105,4 @@ const requireAdmin = (req, res, next) => {
   return requirePerm('__admin_only__')(req, res, next);
 };
 
-module.exports = { hashPassword, verifyPassword, validatePassword, can, loadUser, requireLogin, requirePerm, requireAdmin };
+module.exports = { hashPassword, verifyPassword, validatePassword, normalizeUsername, validateUsername, suggestUsername, can, loadUser, requireLogin, requirePerm, requireAdmin };

@@ -170,6 +170,22 @@ const migrations = [
       'CREATE INDEX idx_insights_channel ON channel_insights (channel, created_at)',
     ];
   },
+  // Đăng nhập bằng tên người dùng; tài khoản cũ lấy phần trước @ của email làm tên
+  function usernames() {
+    return [
+      'ALTER TABLE users ADD COLUMN username VARCHAR(40) NULL',
+      async () => {
+        const { suggestUsername } = require('../lib/auth');
+        const taken = new Set();
+        for (const u of await db.all('SELECT id, email FROM users ORDER BY id')) {
+          const name = suggestUsername(u.email, taken);
+          taken.add(name);
+          await db.run('UPDATE users SET username = ? WHERE id = ?', [name, u.id]);
+        }
+      },
+      'CREATE UNIQUE INDEX idx_users_username ON users (username)',
+    ];
+  },
 ];
 
 async function migrate() {
@@ -179,7 +195,10 @@ async function migrate() {
   for (let i = 0; i < migrations.length; i++) {
     const version = i + 1;
     if (done.has(version)) continue;
-    for (const sql of migrations[i](types())) await db.exec(sql);
+    for (const step of migrations[i](types())) {
+      if (typeof step === 'function') await step();
+      else await db.exec(step);
+    }
     await db.run('INSERT INTO schema_migrations (version) VALUES (?)', [version]);
     console.log(`[db] Đã chạy migration ${version}: ${migrations[i].name}`);
   }

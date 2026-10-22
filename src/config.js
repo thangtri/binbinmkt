@@ -30,6 +30,7 @@ module.exports = {
     },
   },
   admin: {
+    username: (process.env.ADMIN_USERNAME || 'admin').trim().toLowerCase(),
     email: (process.env.ADMIN_EMAIL || '').trim().toLowerCase(),
     password: process.env.ADMIN_PASSWORD || '',
     name: process.env.ADMIN_NAME || 'Quản trị viên',

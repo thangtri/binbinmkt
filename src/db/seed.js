@@ -33,10 +33,10 @@ async function seedBase() {
   if (Number(users.n) === 0) {
     if (config.admin.email && config.admin.password) {
       await db.run(
-        'INSERT INTO users (email, name, password_hash, role, active, created_at) VALUES (?, ?, ?, ?, 1, ?)',
-        [config.admin.email, config.admin.name, hashPassword(config.admin.password), 'admin', now]
+        'INSERT INTO users (username, email, name, password_hash, role, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)',
+        [config.admin.username, config.admin.email, config.admin.name, hashPassword(config.admin.password), 'admin', now]
       );
-      console.log(`[seed] Đã tạo tài khoản admin ${config.admin.email}`);
+      console.log(`[seed] Đã tạo tài khoản admin, tên đăng nhập: ${config.admin.username}`);
     } else {
       console.warn('[seed] Chưa có tài khoản nào. Đặt ADMIN_EMAIL và ADMIN_PASSWORD trong .env rồi khởi động lại.');
     }

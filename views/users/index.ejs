@@ -6,11 +6,12 @@
 <div class="detail">
   <section class="panel panel-flush">
     <table class="table table-rows">
-      <thead><tr><th>Người dùng</th><th>Vai trò</th><th>Đăng nhập gần nhất</th><th><span class="sr-only">Sửa</span></th></tr></thead>
+      <thead><tr><th>Người dùng</th><th>Tên đăng nhập</th><th>Vai trò</th><th>Đăng nhập gần nhất</th><th><span class="sr-only">Sửa</span></th></tr></thead>
       <tbody>
         <% for (const u of users) { %>
           <tr class="<%= Number(u.active) ? '' : 'is-muted' %>">
             <td><strong><%= u.name %></strong><small class="muted block"><%= u.email %></small></td>
+            <td><code><%= u.username %></code></td>
             <td><%= C.ROLES[u.role] ? C.ROLES[u.role].label : u.role %><%= Number(u.active) ? '' : ' (đã khoá)' %></td>
             <td class="nowrap"><%= u.last_login_at ? d.dmyhm(u.last_login_at) : 'Chưa đăng nhập' %></td>
             <td class="right">
@@ -20,6 +21,8 @@
                   <form method="post" action="/users/<%= u.id %>" class="stack">
                     <input type="hidden" name="_csrf" value="<%= csrf %>">
                     <label class="field"><span>Tên</span><input type="text" name="name" value="<%= u.name %>" required></label>
+                    <label class="field"><span>Tên đăng nhập</span><input type="text" name="username" value="<%= u.username %>" required pattern="[a-z0-9][a-z0-9._\-]{1,28}[a-z0-9]" autocapitalize="none" spellcheck="false"></label>
+                    <label class="field"><span>Email</span><input type="email" name="email" value="<%= u.email %>" required></label>
                     <label class="field"><span>Vai trò</span>
                       <select name="role"><% for (const r of Object.values(C.ROLES)) { %><option value="<%= r.key %>"<%= u.role === r.key ? ' selected' : '' %>><%= r.label %></option><% } %></select>
                     </label>
@@ -44,6 +47,8 @@
       <form method="post" action="/users" class="stack">
         <input type="hidden" name="_csrf" value="<%= csrf %>">
         <label class="field"><span>Họ tên</span><input type="text" name="name" value="<%= form.name %>" required></label>
+        <label class="field"><span>Tên đăng nhập</span><input type="text" name="username" value="<%= form.username %>" required pattern="[a-z0-9][a-z0-9._\-]{1,28}[a-z0-9]" autocapitalize="none" spellcheck="false" placeholder="vd: thanhtri">
+          <small>3–30 ký tự: chữ thường không dấu, số, dấu chấm, gạch dưới, gạch ngang.</small></label>
         <label class="field"><span>Email</span><input type="email" name="email" value="<%= form.email %>" required></label>
         <label class="field"><span>Vai trò</span>
           <select name="role"><% for (const r of Object.values(C.ROLES)) { %><option value="<%= r.key %>"<%= form.role === r.key ? ' selected' : '' %>><%= r.label %></option><% } %></select>

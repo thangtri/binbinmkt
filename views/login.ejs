@@ -14,8 +14,8 @@
     <input type="hidden" name="next" value="<%= next %>">
     <% if (error) { %><p class="field-error" role="alert"><%= error %></p><% } %>
     <label class="field">
-      <span>Email</span>
-      <input type="email" name="email" value="<%= email %>" autocomplete="username" required autofocus>
+      <span>Tên đăng nhập</span>
+      <input type="text" name="username" value="<%= username %>" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
     </label>
     <label class="field">
       <span>Mật khẩu</span>
