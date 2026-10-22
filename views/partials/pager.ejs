@@ -1,0 +1,9 @@
+<% if (pages > 1) {
+  const link = (p) => { const q = new URLSearchParams(query); q.set('page', p); return '?' + q.toString(); };
+%>
+<nav class="pager" aria-label="Phân trang">
+  <% if (page > 1) { %><a class="btn btn-quiet" href="<%= link(page - 1) %>"><%- icon('left') %> Trang trước</a><% } %>
+  <span>Trang <%= page %>/<%= pages %></span>
+  <% if (page < pages) { %><a class="btn btn-quiet" href="<%= link(page + 1) %>">Trang sau <%- icon('right') %></a><% } %>
+</nav>
+<% } %>

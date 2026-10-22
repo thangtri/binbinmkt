@@ -1,0 +1,152 @@
+<%- include('../partials/top') %>
+<%
+  const ch = C.CHANNELS[post.channel];
+  const steps = ['draft', 'pending', 'scheduled', 'published'];
+  const at = steps.indexOf(post.status);
+  const fullText = [post.caption, post.hashtags].filter(Boolean).join('\n\n');
+%>
+<header class="page-head">
+  <div>
+    <p class="crumbs"><a href="/posts">Bài đăng</a></p>
+    <h1><%= post.title %></h1>
+    <p class="sub">
+      <%- include('../partials/chips', { kind: 'channel', value: post.channel }) %>
+      <%- include('../partials/chips', { kind: 'status', value: post.status }) %>
+      <% if (post.format) { %><span class="muted"><%= post.format %></span><% } %>
+    </p>
+  </div>
+  <div class="toolbar">
+    <% if (canEdit) { %><a class="btn" href="/posts/<%= post.id %>/edit">Sửa bài</a><% } %>
+  </div>
+</header>
+
+<ol class="steps" aria-label="Tiến trình bài">
+  <% steps.forEach((s, i) => { %>
+    <li class="<%= i < at ? 'is-done' : i === at ? 'is-now' : '' %>"<%- i === at ? ' aria-current="step"' : '' %>><span><%= i + 1 %></span><%= C.STATUSES[s].label %></li>
+  <% }) %>
+</ol>
+
+<% if (post.review_note) { %>
+  <div class="flash <%= post.status === 'draft' ? 'flash-warn' : 'flash-info' %>">
+    <strong><%= post.status === 'draft' ? 'Cần sửa' : 'Ghi chú duyệt' %><%= post.reviewer_name ? ' từ ' + post.reviewer_name : '' %>:</strong> <%= post.review_note %>
+  </div>
+<% } %>
+
+<div class="detail">
+  <section class="panel post-preview">
+    <div class="panel-head">
+      <h2>Nội dung</h2>
+      <% if (fullText) { %><button class="btn btn-small" type="button" data-copy="<%= fullText %>">Sao chép để đăng</button><% } %>
+    </div>
+    <% if (post.media_path) { %>
+      <div class="media-current media-large">
+        <% if (/\.(mp4|mov|webm)$/i.test(post.media_path)) { %>
+          <video src="/uploads/<%= post.media_path %>" controls preload="metadata"></video>
+        <% } else { %>
+          <img src="/uploads/<%= post.media_path %>" alt="Ảnh đính kèm của bài">
+        <% } %>
+        <a href="/uploads/<%= post.media_path %>" download>Tải file gốc</a>
+      </div>
+    <% } %>
+    <% if (post.caption) { %><div class="caption"><%= post.caption %></div><% } else { %><p class="empty">Chưa có nội dung.</p><% } %>
+    <% if (post.hashtags) { %><p class="tags"><%= post.hashtags %></p><% } %>
+    <p class="muted small"><%= post.caption ? post.caption.length.toLocaleString('vi-VN') : 0 %> ký tự<%= ch.limit ? ' trên tối đa ' + ch.limit.toLocaleString('vi-VN') : '' %></p>
+    <% if (post.notes) { %><div class="note"><strong>Ghi chú cho team:</strong> <%= post.notes %></div><% } %>
+  </section>
+
+  <aside class="stack">
+    <section class="panel">
+      <dl class="kv">
+        <dt>Ngày đăng</dt><dd><%= post.scheduled_at ? d.weekday(post.scheduled_at, true) + ', ' + d.dmyhm(post.scheduled_at) : 'Chưa chọn' %></dd>
+        <% if (post.event_title) { %><dt>Sự kiện</dt><dd><%= post.event_title %></dd><% } %>
+        <dt>Người soạn</dt><dd><%= post.author_name || '' %></dd>
+        <% if (post.reviewer_name && post.status !== 'draft') { %><dt>Người duyệt</dt><dd><%= post.reviewer_name %></dd><% } %>
+        <% if (post.published_at) { %><dt>Đã đăng lúc</dt><dd><%= d.dmyhm(post.published_at) %></dd><% } %>
+        <% if (post.published_url) { %><dt>Link</dt><dd><a href="<%= post.published_url %>" target="_blank" rel="noopener">Mở bài trên <%= ch.name %></a></dd><% } %>
+      </dl>
+    </section>
+
+    <% if (post.status === 'draft' && can('post:submit')) { %>
+      <section class="panel">
+        <form method="post" action="/posts/<%= post.id %>/submit">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button class="btn btn-primary btn-block" type="submit"<%= post.scheduled_at ? '' : ' disabled' %>>Gửi duyệt</button>
+          <% if (!post.scheduled_at) { %><p class="hint">Chọn ngày đăng trước khi gửi duyệt.</p><% } %>
+        </form>
+      </section>
+    <% } %>
+
+    <% if (post.status === 'pending' && can('post:approve')) { %>
+      <section class="panel stack">
+        <h2>Duyệt bài</h2>
+        <form method="post" action="/posts/<%= post.id %>/approve" class="stack">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <label class="field"><span>Ghi chú (không bắt buộc)</span><textarea name="note" rows="2"></textarea></label>
+          <button class="btn btn-primary btn-block" type="submit"><%- icon('check') %> Duyệt bài</button>
+        </form>
+        <form method="post" action="/posts/<%= post.id %>/reject" class="stack">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <label class="field"><span>Lý do trả về</span><textarea name="note" rows="2" required placeholder="Cần sửa gì để duyệt được?"></textarea></label>
+          <button class="btn btn-block" type="submit">Trả về nháp</button>
+        </form>
+      </section>
+    <% } %>
+
+    <% if (post.status === 'scheduled' && can('post:publish')) { %>
+      <section class="panel stack">
+        <h2>Đã đăng lên <%= ch.name %>?</h2>
+        <form method="post" action="/posts/<%= post.id %>/publish" class="stack">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <label class="field"><span>Link bài đã đăng</span><input type="url" name="url" placeholder="https://"></label>
+          <button class="btn btn-primary btn-block" type="submit"><%- icon('check') %> Đánh dấu đã đăng</button>
+        </form>
+      </section>
+    <% } %>
+
+    <% if (post.status === 'published') { %>
+      <section class="panel stack">
+        <h2>Kết quả</h2>
+        <% if (can('post:publish')) { %>
+          <form method="post" action="/posts/<%= post.id %>/metrics" class="stack">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <div class="row-2">
+              <label class="field"><span>Lượt xem</span><input type="number" min="0" name="views" value="<%= post.views %>"></label>
+              <label class="field"><span>Lượt thích</span><input type="number" min="0" name="likes" value="<%= post.likes %>"></label>
+              <label class="field"><span>Bình luận</span><input type="number" min="0" name="comments" value="<%= post.comments %>"></label>
+              <label class="field"><span>Chia sẻ</span><input type="number" min="0" name="shares" value="<%= post.shares %>"></label>
+            </div>
+            <label class="field"><span>Link bài</span><input type="url" name="url" value="<%= post.published_url || '' %>" placeholder="https://"></label>
+            <button class="btn btn-block" type="submit">Lưu số liệu</button>
+          </form>
+        <% } else { %>
+          <dl class="kv">
+            <dt>Lượt xem</dt><dd><%= num(post.views) %></dd><dt>Lượt thích</dt><dd><%= num(post.likes) %></dd>
+            <dt>Bình luận</dt><dd><%= num(post.comments) %></dd><dt>Chia sẻ</dt><dd><%= num(post.shares) %></dd>
+          </dl>
+        <% } %>
+      </section>
+    <% } %>
+
+    <% if (can('post:create')) { %>
+      <section class="panel stack">
+        <h2>Dùng lại cho kênh khác</h2>
+        <form method="post" action="/posts/<%= post.id %>/duplicate" class="inline-form">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <label class="sr-only" for="dup-ch">Kênh</label>
+          <select id="dup-ch" name="channel">
+            <% for (const c of Object.values(C.CHANNELS)) { if (c.key !== post.channel) { %><option value="<%= c.key %>"><%= c.name %></option><% } } %>
+          </select>
+          <button class="btn" type="submit">Tạo bản nháp</button>
+        </form>
+      </section>
+    <% } %>
+
+    <% if (canDelete) { %>
+      <form method="post" action="/posts/<%= post.id %>/delete" data-confirm="Xoá bài “<%= post.title %>”? Không khôi phục được.">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <button class="btn btn-danger-quiet" type="submit">Xoá bài</button>
+      </form>
+    <% } %>
+  </aside>
+</div>
+<%- include('../partials/bottom') %>

@@ -1,0 +1,159 @@
+<%- include('partials/top') %>
+<%
+  const firstName = user.name.trim();
+  const weekTotal = Object.values(week).reduce((s, w) => s + w.total, 0);
+  const activeChannels = Object.keys(week).length;
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) + '%' : '—');
+%>
+<header class="page-head">
+  <div>
+    <p class="date-line"><%= d.weekday(today, true) %>, <%= d.dmy(today) %></p>
+    <h1>Chào <%= firstName %></h1>
+    <p class="summary">
+      Tuần này có <strong><%= weekTotal %> bài</strong> trên <%= activeChannels %> kênh.
+      <% if (pendingCount) { %><a href="/posts?status=pending"><strong><%= pendingCount %> bài</strong> đang chờ duyệt</a>.<% } else { %>Không có bài nào chờ duyệt.<% } %>
+      Tháng này đã đăng <strong><%= publishedMonth %> bài</strong>.
+    </p>
+  </div>
+  <% if (can('post:create')) { %>
+    <a class="btn btn-primary" href="/posts/new"><%- icon('plus') %> Soạn bài</a>
+  <% } %>
+</header>
+
+<div class="dash">
+  <div class="dash-main">
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Cần đăng hôm nay</h2>
+        <a href="/calendar">Xem lịch</a>
+      </div>
+      <% if (!due.length) { %>
+        <p class="empty">Hôm nay không có bài nào đến giờ đăng.</p>
+      <% } else { %>
+        <ul class="due">
+          <% for (const p of due) { const late = p.scheduled_at.slice(0, 10) < today; %>
+            <li>
+              <div class="due-time<%= late ? ' is-late' : '' %>">
+                <strong><%= d.hm(p.scheduled_at) %></strong>
+                <small><%= late ? 'Trễ từ ' + d.dm(p.scheduled_at) : 'Hôm nay' %></small>
+              </div>
+              <div class="due-body">
+                <%- include('partials/chips', { kind: 'channel', value: p.channel }) %>
+                <a href="/posts/<%= p.id %>" class="due-title"><%= p.title %></a>
+              </div>
+              <% if (can('post:publish')) { %>
+                <form method="post" action="/posts/<%= p.id %>/publish" class="due-action">
+                  <input type="hidden" name="_csrf" value="<%= csrf %>">
+                  <input type="hidden" name="back" value="dashboard">
+                  <label class="sr-only" for="url-<%= p.id %>">Link bài đã đăng</label>
+                  <input id="url-<%= p.id %>" type="url" name="url" placeholder="Dán link bài đã đăng">
+                  <button class="btn btn-small" type="submit"><%- icon('check') %> Đã đăng</button>
+                </form>
+              <% } %>
+            </li>
+          <% } %>
+        </ul>
+      <% } %>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Chờ duyệt</h2>
+        <% if (pendingCount > pending.length) { %><a href="/posts?status=pending">Xem cả <%= pendingCount %> bài</a><% } %>
+      </div>
+      <% if (!pending.length) { %>
+        <p class="empty">Không có bài nào chờ duyệt.</p>
+      <% } else { %>
+        <table class="table">
+          <thead><tr><th>Bài</th><th>Kênh</th><th>Ngày đăng</th><th class="hide-sm">Người soạn</th><% if (user.role === 'admin') { %><th><span class="sr-only">Duyệt</span></th><% } %></tr></thead>
+          <tbody>
+          <% for (const p of pending) { %>
+            <tr>
+              <td><a href="/posts/<%= p.id %>"><%= p.title %></a></td>
+              <td><%- include('partials/chips', { kind: 'channel', value: p.channel }) %></td>
+              <td class="nowrap"><%= p.scheduled_at ? d.dmyhm(p.scheduled_at) : 'Chưa chọn' %></td>
+              <td class="hide-sm"><%= p.author_name || '' %></td>
+              <% if (user.role === 'admin') { %>
+                <td class="right">
+                  <form method="post" action="/posts/<%= p.id %>/approve">
+                    <input type="hidden" name="_csrf" value="<%= csrf %>">
+                    <input type="hidden" name="back" value="dashboard">
+                    <button class="btn btn-small" type="submit">Duyệt</button>
+                  </form>
+                </td>
+              <% } %>
+            </tr>
+          <% } %>
+          </tbody>
+        </table>
+      <% } %>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Hoạt động gần đây</h2></div>
+      <% if (!activity.length) { %>
+        <p class="empty">Chưa có hoạt động nào.</p>
+      <% } else { %>
+        <ul class="feed">
+          <% for (const a of activity) { %>
+            <li><span class="feed-who"><%= a.user_name || 'Hệ thống' %></span> <%= ({ 'post.create': 'tạo bài', 'post.update': 'sửa bài', 'post.submit': 'gửi duyệt', 'post.approve': 'duyệt bài', 'post.reject': 'trả bài', 'post.publish': 'đã đăng', 'post.reschedule': 'đổi ngày', 'post.delete': 'xoá bài', 'event.create': 'thêm sự kiện', 'event.update': 'sửa sự kiện', 'event.delete': 'xoá sự kiện', 'campaign.create': 'tạo chiến dịch', 'campaign.send': 'gửi chiến dịch', 'campaign.delete': 'xoá chiến dịch', 'contact.import': 'nhập danh bạ', 'contact.delete': 'xoá liên hệ', 'channel.update': 'sửa kênh', 'channel.stats': 'ghi số liệu', 'user.create': 'tạo tài khoản', 'user.update': 'sửa tài khoản' })[a.action] || a.action %>
+              <span class="feed-what"><%= a.summary %></span>
+              <time><%= d.dmyhm(a.created_at) %></time></li>
+          <% } %>
+        </ul>
+      <% } %>
+    </section>
+  </div>
+
+  <div class="dash-side">
+    <section class="panel">
+      <div class="panel-head"><h2>Sự kiện sắp tới</h2><a href="/events">Tất cả</a></div>
+      <% if (!upcoming.length) { %>
+        <p class="empty">45 ngày tới chưa có sự kiện nào. <a href="/events/new">Thêm sự kiện</a></p>
+      <% } else { %>
+        <ol class="upcoming">
+          <% for (const ev of upcoming) { %>
+            <li>
+              <div class="up-date"><strong><%= ev.occ_start.slice(8, 10) %></strong><small>Th<%= Number(ev.occ_start.slice(5, 7)) %></small></div>
+              <div>
+                <p class="up-title"><%= ev.title %></p>
+                <p class="up-meta">
+                  <%= d.relative(ev.occ_start) %>,
+                  <% if (ev.post_count) { %><%= ev.post_count %> bài đã lên kế hoạch
+                  <% } else { %><span class="warn">chưa có bài</span><% if (can('post:create')) { %> <a href="/posts/new?event=<%= ev.id %>&date=<%= d.addDays(ev.occ_start, -3) < today ? today : d.addDays(ev.occ_start, -3) %>">Soạn bài</a><% } %><% } %>
+                </p>
+              </div>
+            </li>
+          <% } %>
+        </ol>
+      <% } %>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Tuần <%= d.dm(weekStart) %> – <%= d.dm(weekEnd) %></h2></div>
+      <table class="table table-compact">
+        <thead><tr><th>Kênh</th><th class="num">Bài</th><th class="num">Đã đăng</th></tr></thead>
+        <tbody>
+          <% for (const ch of Object.values(C.CHANNELS)) { const w = week[ch.key] || { total: 0, published: 0 }; %>
+            <tr><td><%- include('partials/chips', { kind: 'channel', value: ch.key }) %></td><td class="num"><%= w.total %></td><td class="num"><%= w.published %></td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Email gần nhất</h2><a href="/email/campaigns">Chiến dịch</a></div>
+      <% if (!campaign) { %>
+        <p class="empty">Chưa gửi chiến dịch nào.</p>
+      <% } else { %>
+        <p><a href="/email/campaigns/<%= campaign.id %>"><strong><%= campaign.name %></strong></a></p>
+        <dl class="kv">
+          <dt>Đã gửi</dt><dd><%= num(campaign.stats.total) %> người, <%= d.dmy(campaign.sent_at) %></dd>
+          <dt>Tỷ lệ mở</dt><dd><%= pct(Number(campaign.stats.opened), Number(campaign.stats.total)) %></dd>
+          <dt>Tỷ lệ nhấp</dt><dd><%= pct(Number(campaign.stats.clicked), Number(campaign.stats.total)) %></dd>
+        </dl>
+      <% } %>
+    </section>
+  </div>
+</div>
+<%- include('partials/bottom') %>

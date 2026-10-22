@@ -1,0 +1,100 @@
+<%- include('partials/top') %>
+<%
+  const editable = can('post:edit');
+  const chip = (p) => `<a class="chip chip-${p.status}" href="/posts/${p.id}"${editable && p.status !== 'published' ? ` draggable="true" data-post="${p.id}"` : ''} title="${C.STATUSES[p.status].label}: ${p.title.replace(/"/g, '&quot;')}"><time>${d.hm(p.scheduled_at)}</time><span>${p.title.replace(/</g, '&lt;')}</span></a>`;
+%>
+<header class="page-head">
+  <div>
+    <h1>Lịch đăng bài</h1>
+    <p class="sub">
+      <% if (view === 'board') { %><%= d.dmy(start) %> – <%= d.dmy(end) %><% } else { %><%= d.monthLabel(year, month) %><% } %>
+    </p>
+  </div>
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Kiểu xem">
+      <a href="/calendar?view=board" class="<%= view === 'board' ? 'is-on' : '' %>"<%- view === 'board' ? ' aria-current="page"' : '' %>>Bảng kênh</a>
+      <a href="/calendar?view=month" class="<%= view === 'month' ? 'is-on' : '' %>"<%- view === 'month' ? ' aria-current="page"' : '' %>>Tháng</a>
+    </div>
+    <div class="seg" role="group" aria-label="Chuyển thời gian">
+      <% if (view === 'board') { %>
+        <a href="/calendar?view=board&start=<%= prev %>" aria-label="Tuần trước"><%- icon('left') %></a>
+        <a href="/calendar?view=board">Hôm nay</a>
+        <a href="/calendar?view=board&start=<%= next %>" aria-label="Tuần sau"><%- icon('right') %></a>
+      <% } else { %>
+        <a href="/calendar?view=month&m=<%= prevM %><%= channel ? '&channel=' + channel : '' %>" aria-label="Tháng trước"><%- icon('left') %></a>
+        <a href="/calendar?view=month<%= channel ? '&channel=' + channel : '' %>">Tháng này</a>
+        <a href="/calendar?view=month&m=<%= nextM %><%= channel ? '&channel=' + channel : '' %>" aria-label="Tháng sau"><%- icon('right') %></a>
+      <% } %>
+    </div>
+  </div>
+</header>
+
+<div class="legend" aria-label="Chú thích trạng thái">
+  <% for (const s of Object.values(C.STATUSES)) { %><span class="chip chip-<%= s.key %> chip-legend"><span><%= s.label %></span></span><% } %>
+  <% if (editable) { %><span class="hint">Kéo một bài sang ô khác để đổi ngày đăng.</span><% } %>
+</div>
+
+<% if (view === 'board') { %>
+  <div class="board-scroll" data-board data-csrf="<%= csrf %>">
+    <div class="board" style="--days: <%= days.length %>">
+      <div class="b-corner"></div>
+      <% days.forEach((day, i) => { const dow = d.weekday(day); %>
+        <div class="b-day<%= day === today ? ' is-today' : '' %><%= dow === 'T7' || dow === 'CN' ? ' is-weekend' : '' %>" style="grid-column: <%= i + 2 %>">
+          <small><%= dow %></small><strong><%= day.slice(8, 10) %></strong><% if (i === 0 || day.slice(8, 10) === '01') { %><small>Th<%= Number(day.slice(5, 7)) %></small><% } %>
+        </div>
+      <% }) %>
+
+      <div class="b-label b-label-events" style="grid-row: span <%= Math.max(1, eventLanes) %>">Sự kiện</div>
+      <div class="b-events" style="grid-row: span <%= Math.max(1, eventLanes) %>; --lanes: <%= Math.max(1, eventLanes) %>">
+        <% days.forEach((day, i) => { %><div class="b-evbg<%= day === today ? ' is-today' : '' %>" style="grid-column: <%= i + 1 %>"></div><% }) %>
+        <% for (const ev of events) { %>
+          <a class="evbar ev-<%= ev.kind %><%= ev.clippedStart ? ' cut-start' : '' %><%= ev.clippedEnd ? ' cut-end' : '' %>"
+             href="<%= can('event:edit') ? '/events/' + ev.id + '/edit' : '/events' %>"
+             style="grid-column: <%= ev.col %> / span <%= ev.span %>; grid-row: <%= ev.lane + 1 %>"
+             title="<%= ev.title %> (<%= d.dm(ev.occ_start) %><%= ev.occ_end !== ev.occ_start ? ' – ' + d.dm(ev.occ_end) : '' %>)"><%= ev.title %></a>
+        <% } %>
+        <% if (!events.length) { %><span class="b-noevents">Không có sự kiện trong 2 tuần này</span><% } %>
+      </div>
+
+      <% for (const ch of Object.values(C.CHANNELS)) { %>
+        <a class="b-label b-label-ch ch-<%= ch.key %>" href="/channels/<%= ch.key %>"><b><%= ch.code %></b><span><%= ch.name %></span></a>
+        <% days.forEach((day, i) => { const items = cells[ch.key + '|' + day] || []; %>
+          <div class="b-cell<%= day === today ? ' is-today' : '' %><%= day < today ? ' is-past' : '' %>" data-date="<%= day %>" data-channel="<%= ch.key %>">
+            <% for (const p of items) { %><%- chip(p) %><% } %>
+            <% if (can('post:create') && day >= today) { %>
+              <a class="b-add" href="/posts/new?date=<%= day %>&channel=<%= ch.key %>" aria-label="Soạn bài <%= ch.name %> ngày <%= d.dm(day) %>"><%- icon('plus') %></a>
+            <% } %>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+<% } else { %>
+  <form class="filters" method="get" action="/calendar">
+    <input type="hidden" name="view" value="month">
+    <input type="hidden" name="m" value="<%= m %>">
+    <label class="field field-inline"><span>Kênh</span>
+      <select name="channel" data-autosubmit>
+        <option value="">Tất cả kênh</option>
+        <% for (const ch of Object.values(C.CHANNELS)) { %><option value="<%= ch.key %>"<%= channel === ch.key ? ' selected' : '' %>><%= ch.name %></option><% } %>
+      </select>
+    </label>
+    <noscript><button class="btn" type="submit">Lọc</button></noscript>
+  </form>
+  <div class="month" data-board data-csrf="<%= csrf %>">
+    <% for (const wd of ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']) { %><div class="m-head"><%= wd %></div><% } %>
+    <% for (const wk of weeks) { for (const day of wk) {
+         const items = byDay[day] || []; const evs = eventsByDay[day] || []; const out = day.slice(5, 7) !== m.slice(5, 7); %>
+      <div class="m-cell<%= out ? ' is-out' : '' %><%= day === today ? ' is-today' : '' %>" data-date="<%= day %>">
+        <div class="m-date">
+          <span><%= Number(day.slice(8, 10)) %></span>
+          <% if (can('post:create') && day >= today) { %><a class="b-add" href="/posts/new?date=<%= day %><%= channel ? '&channel=' + channel : '' %>" aria-label="Soạn bài ngày <%= d.dm(day) %>"><%- icon('plus') %></a><% } %>
+        </div>
+        <% for (const ev of evs) { %><span class="m-ev ev-<%= ev.kind %>" title="<%= ev.title %>"><%= ev.title %></span><% } %>
+        <% items.slice(0, 4).forEach((p) => { %><%- chip(p).replace('class="chip ', `class="chip chip-ch-${p.channel} `) %><% }) %>
+        <% if (items.length > 4) { %><a class="m-more" href="/calendar?view=board&start=<%= day %>">+<%= items.length - 4 %> bài</a><% } %>
+      </div>
+    <% } } %>
+  </div>
+<% } %>
+<%- include('partials/bottom') %>

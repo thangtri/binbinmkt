@@ -1,0 +1,26 @@
+<%- include('partials/head') %>
+<body class="plain">
+<main class="login">
+  <div class="login-mark">
+    <img src="/public/img/logo.png" alt="Bin Bin Hotel" width="96" height="96">
+    <p>Phòng marketing</p>
+  </div>
+  <form method="post" action="/login" class="login-form">
+    <h1>Đăng nhập</h1>
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="next" value="<%= next %>">
+    <% if (error) { %><p class="field-error" role="alert"><%= error %></p><% } %>
+    <label class="field">
+      <span>Email</span>
+      <input type="email" name="email" value="<%= email %>" autocomplete="username" required autofocus>
+    </label>
+    <label class="field">
+      <span>Mật khẩu</span>
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button class="btn btn-primary btn-block" type="submit">Đăng nhập</button>
+    <p class="hint">Quên mật khẩu? Nhờ quản trị viên đặt lại trong mục Tài khoản.</p>
+  </form>
+</main>
+</body>
+</html>

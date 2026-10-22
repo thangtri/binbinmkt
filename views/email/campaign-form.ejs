@@ -1,0 +1,35 @@
+<%- include('../partials/top') %>
+<% const isNew = !c.id; %>
+<header class="page-head">
+  <div><p class="crumbs"><a href="/email/campaigns">Email marketing</a></p><h1><%= isNew ? 'Chiến dịch mới' : 'Sửa chiến dịch' %></h1></div>
+</header>
+<% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+
+<form method="post" action="<%= isNew ? '/email/campaigns' : '/email/campaigns/' + c.id %>" class="editor">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="editor-main panel stack">
+    <label class="field"><span>Tiêu đề email</span><input type="text" name="subject" value="<%= c.subject %>" maxlength="200" required placeholder="Ưu đãi 15% cho khách quen tháng 11"><small>Khách thấy dòng này trong hộp thư. Nên dưới 60 ký tự.</small></label>
+    <label class="field"><span>Dòng xem trước</span><input type="text" name="preheader" value="<%= c.preheader || '' %>" maxlength="200" placeholder="Hiện ngay sau tiêu đề trên điện thoại"></label>
+    <label class="field">
+      <span>Nội dung (HTML)</span>
+      <textarea name="body_html" rows="18" class="code" required><%= c.body_html %></textarea>
+      <small>Viết <code>{{ten}}</code> để chèn tên người nhận. Logo, chân trang và link huỷ nhận email được thêm tự động.</small>
+    </label>
+  </div>
+  <aside class="editor-side">
+    <div class="panel stack">
+      <label class="field"><span>Tên chiến dịch</span><input type="text" name="name" value="<%= c.name %>" maxlength="200" required placeholder="Ưu đãi khách cũ T11"><small>Chỉ hiển thị nội bộ.</small></label>
+      <label class="field"><span>Gửi tới nhóm</span>
+        <select name="audience_tag">
+          <option value="">Tất cả người đang nhận tin</option>
+          <% for (const t of tags) { %><option value="<%= t %>"<%= c.audience_tag === t ? ' selected' : '' %>><%= t %></option><% } %>
+        </select>
+      </label>
+    </div>
+    <div class="panel stack actions-panel">
+      <button class="btn btn-primary btn-block" type="submit">Lưu và xem trước</button>
+      <a class="btn btn-quiet btn-block" href="<%= isNew ? '/email/campaigns' : '/email/campaigns/' + c.id %>">Huỷ</a>
+    </div>
+  </aside>
+</form>
+<%- include('../partials/bottom') %>

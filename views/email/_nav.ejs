@@ -1,0 +1,7 @@
+<nav class="tabs" aria-label="Email marketing">
+  <a href="/email/campaigns" class="<%= path.startsWith('/email/campaigns') ? 'is-on' : '' %>">Chiến dịch</a>
+  <a href="/email/contacts" class="<%= path.startsWith('/email/contacts') ? 'is-on' : '' %>">Danh bạ</a>
+</nav>
+<% if (!brevoLive) { %>
+  <div class="flash flash-warn"><strong>Chế độ thử:</strong> chưa cấu hình Brevo (BREVO_API_KEY, BREVO_SENDER_EMAIL), nên email chỉ được ghi nhận chứ không gửi thật.</div>
+<% } %>

@@ -1,0 +1,57 @@
+<%- include('../partials/top') %>
+<header class="page-head">
+  <div><h1>Bài đăng</h1><p class="sub"><%= total %> bài phù hợp bộ lọc</p></div>
+  <% if (can('post:create')) { %><a class="btn btn-primary" href="/posts/new"><%- icon('plus') %> Soạn bài</a><% } %>
+</header>
+
+<nav class="tabs" aria-label="Lọc theo trạng thái">
+  <% const base = (s) => { const q = new URLSearchParams(query); q.delete('page'); s ? q.set('status', s) : q.delete('status'); return '?' + q.toString(); }; %>
+  <a href="<%= base('') %>" class="<%= !query.status ? 'is-on' : '' %>">Tất cả</a>
+  <% for (const s of Object.values(C.STATUSES)) { %>
+    <a href="<%= base(s.key) %>" class="<%= query.status === s.key ? 'is-on' : '' %>"><%= s.label %> <span class="count"><%= counts[s.key] || 0 %></span></a>
+  <% } %>
+</nav>
+
+<form class="filters" method="get">
+  <% if (query.status) { %><input type="hidden" name="status" value="<%= query.status %>"><% } %>
+  <label class="field field-inline"><span>Kênh</span>
+    <select name="channel" data-autosubmit>
+      <option value="">Tất cả kênh</option>
+      <% for (const ch of Object.values(C.CHANNELS)) { %><option value="<%= ch.key %>"<%= query.channel === ch.key ? ' selected' : '' %>><%= ch.name %></option><% } %>
+    </select>
+  </label>
+  <label class="field field-inline field-grow"><span class="sr-only">Tìm</span>
+    <input type="search" name="q" value="<%= query.q || '' %>" placeholder="Tìm theo tiêu đề hoặc nội dung">
+  </label>
+  <label class="check"><input type="checkbox" name="mine" value="1"<%= query.mine ? ' checked' : '' %> data-autosubmit> Bài của tôi</label>
+  <button class="btn" type="submit">Lọc</button>
+</form>
+
+<% if (!posts.length) { %>
+  <div class="panel empty-state">
+    <p>Chưa có bài nào phù hợp.</p>
+    <% if (can('post:create')) { %><a class="btn btn-primary" href="/posts/new">Soạn bài đầu tiên</a><% } %>
+  </div>
+<% } else { %>
+  <div class="panel panel-flush">
+    <table class="table table-rows">
+      <thead><tr><th>Ngày đăng</th><th>Bài</th><th>Kênh</th><th>Trạng thái</th><th>Người soạn</th></tr></thead>
+      <tbody>
+      <% for (const p of posts) { %>
+        <tr>
+          <td class="nowrap"><% if (p.scheduled_at) { %><strong><%= d.dm(p.scheduled_at) %></strong> <span class="muted"><%= d.hm(p.scheduled_at) %>, <%= d.weekday(p.scheduled_at) %></span><% } else { %><span class="muted">Chưa chọn ngày</span><% } %></td>
+          <td>
+            <a href="/posts/<%= p.id %>" class="row-title"><%= p.title %></a>
+            <% if (p.event_title) { %><small class="muted block">Cho sự kiện: <%= p.event_title %></small><% } %>
+          </td>
+          <td><%- include('../partials/chips', { kind: 'channel', value: p.channel }) %></td>
+          <td><%- include('../partials/chips', { kind: 'status', value: p.status }) %></td>
+          <td><%= p.author_name || '' %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+  </div>
+  <%- include('../partials/pager') %>
+<% } %>
+<%- include('../partials/bottom') %>

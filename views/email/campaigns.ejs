@@ -1,0 +1,36 @@
+<%- include('../partials/top') %>
+<% const pct = (a, b) => (b ? Math.round((a / b) * 100) + '%' : '—'); %>
+<header class="page-head">
+  <div><h1>Email marketing</h1><p class="sub"><%= num(subscribed) %> người đang nhận tin</p></div>
+  <% if (can('campaign:edit')) { %><a class="btn btn-primary" href="/email/campaigns/new"><%- icon('plus') %> Chiến dịch mới</a><% } %>
+</header>
+<%- include('_nav') %>
+
+<% if (!list.length) { %>
+  <div class="panel empty-state">
+    <p>Chưa có chiến dịch nào. Bắt đầu bằng một email ưu đãi gửi khách cũ.</p>
+    <% if (can('campaign:edit')) { %><a class="btn btn-primary" href="/email/campaigns/new">Tạo chiến dịch</a><% } %>
+  </div>
+<% } else { %>
+  <div class="panel panel-flush">
+    <table class="table table-rows">
+      <thead><tr><th>Chiến dịch</th><th>Nhóm nhận</th><th>Trạng thái</th><th class="num">Đã gửi</th><th class="num">Mở</th><th class="num">Nhấp</th></tr></thead>
+      <tbody>
+        <% for (const c of list) { %>
+          <tr>
+            <td><a class="row-title" href="/email/campaigns/<%= c.id %>"><%= c.name %></a><small class="muted block"><%= c.subject %></small></td>
+            <td><%= c.audience_tag ? c.audience_tag : 'Tất cả' %></td>
+            <td>
+              <span class="status status-<%= c.status === 'sent' ? 'published' : c.status === 'sending' ? 'pending' : 'draft' %>"><%= { draft: 'Nháp', sending: 'Đang gửi', sent: 'Đã gửi' }[c.status] || c.status %></span>
+              <% if (Number(c.dry_run)) { %><small class="muted block">chế độ thử</small><% } %>
+            </td>
+            <td class="num"><%= c.stats ? num(c.stats.sent) : '—' %><% if (c.sent_at) { %><small class="muted block"><%= d.dmy(c.sent_at) %></small><% } %></td>
+            <td class="num"><%= c.stats ? pct(c.stats.opened, c.stats.sent) : '—' %></td>
+            <td class="num"><%= c.stats ? pct(c.stats.clicked, c.stats.sent) : '—' %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+<%- include('../partials/bottom') %>

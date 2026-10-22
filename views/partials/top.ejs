@@ -1,0 +1,45 @@
+<%- include('head') %>
+<%
+  const nav = [
+    { href: '/', label: 'Tổng quan', icon: 'home', match: (p) => p === '/' },
+    { href: '/calendar', label: 'Lịch đăng bài', icon: 'calendar', match: (p) => p.startsWith('/calendar') },
+    { href: '/posts', label: 'Bài đăng', icon: 'file', match: (p) => p.startsWith('/posts') },
+    { href: '/events', label: 'Sự kiện', icon: 'flag', match: (p) => p.startsWith('/events') },
+    { href: '/channels', label: 'Kênh', icon: 'share', match: (p) => p.startsWith('/channels') },
+    { href: '/email/campaigns', label: 'Email marketing', icon: 'mail', match: (p) => p.startsWith('/email') },
+  ];
+  if (user && user.role === 'admin') nav.push({ href: '/users', label: 'Tài khoản', icon: 'users', match: (p) => p.startsWith('/users') });
+  const roleLabel = user ? C.ROLES[user.role].label : '';
+%>
+<body>
+<a class="skip" href="#main">Bỏ qua menu</a>
+<div class="shell">
+  <aside class="side" id="side">
+    <a class="brand" href="/">
+      <img src="/public/img/logo.png" alt="" width="40" height="40">
+      <span><strong>Bin Bin Hotel</strong><small>Marketing</small></span>
+    </a>
+    <nav aria-label="Chính">
+      <% for (const item of nav) { const on = item.match(path); %>
+        <a href="<%= item.href %>" class="nav-item<%= on ? ' is-on' : '' %>"<%- on ? ' aria-current="page"' : '' %>><%- icon(item.icon) %><span><%= item.label %></span></a>
+      <% } %>
+    </nav>
+    <div class="side-foot">
+      <a class="me" href="/account">
+        <span class="avatar" aria-hidden="true"><%= user.name.trim().charAt(0).toUpperCase() %></span>
+        <span><strong><%= user.name %></strong><small><%= roleLabel %></small></span>
+      </a>
+      <form method="post" action="/logout">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <button class="icon-btn" type="submit" title="Đăng xuất" aria-label="Đăng xuất"><%- icon('logout') %></button>
+      </form>
+    </div>
+  </aside>
+  <div class="topbar">
+    <button class="icon-btn" type="button" data-toggle-nav aria-controls="side" aria-expanded="false" aria-label="Mở menu"><%- icon('menu') %></button>
+    <a class="brand brand-sm" href="/"><img src="/public/img/logo.png" alt="" width="30" height="30"><strong>Bin Bin Marketing</strong></a>
+  </div>
+  <main id="main" class="main">
+    <% if (flash) { %>
+      <div class="flash flash-<%= flash.type %>" role="<%= flash.type === 'error' ? 'alert' : 'status' %>"><%= flash.message %></div>
+    <% } %>

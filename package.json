@@ -1,0 +1,24 @@
+{
+  "name": "binbin-marketing",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ứng dụng quản trị marketing nội bộ cho Bin Bin Hotel",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed:demo": "node src/db/seed-demo.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cookie-session": "^2.1.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.11.5"
+  }
+}

@@ -1,0 +1,132 @@
+<%- include('../partials/top') %>
+<%
+  const series = stats.filter((s) => s.followers != null).slice().reverse();
+  let spark = '';
+  if (series.length >= 2) {
+    const vals = series.map((s) => Number(s.followers));
+    const min = Math.min(...vals), max = Math.max(...vals), w = 320, hgt = 72, pad = 6;
+    const pts = vals.map((v, i) => [pad + (i * (w - pad * 2)) / (vals.length - 1), max === min ? hgt / 2 : hgt - pad - ((v - min) * (hgt - pad * 2)) / (max - min)]);
+    spark = { w, hgt, line: pts.map((p) => p.map((n) => n.toFixed(1)).join(',')).join(' '), last: pts[pts.length - 1], min, max, first: series[0].recorded_on, lastDay: series[series.length - 1].recorded_on };
+  }
+  const isGoogle = ch.key === 'google';
+  const editable = can('channel:edit');
+%>
+<header class="page-head">
+  <div>
+    <p class="crumbs"><a href="/channels">Kênh</a></p>
+    <h1><%- include('../partials/chips', { kind: 'channel', value: ch.key }) %></h1>
+    <p class="sub"><%= ch.tips %></p>
+  </div>
+  <% if (account.url) { %><a class="btn" href="<%= account.url %>" target="_blank" rel="noopener"><%- icon('link') %> Mở trang <%= ch.name %></a><% } %>
+</header>
+
+<div class="detail">
+  <div class="stack">
+    <section class="panel">
+      <div class="panel-head"><h2>Người theo dõi</h2></div>
+      <% if (spark) { %>
+        <figure class="spark">
+          <svg viewBox="0 0 <%= spark.w %> <%= spark.hgt %>" role="img" aria-label="Người theo dõi từ <%= num(spark.min) %> đến <%= num(spark.max) %>, <%= d.dmy(spark.first) %> – <%= d.dmy(spark.lastDay) %>">
+            <polyline points="<%= spark.line %>" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            <circle cx="<%= spark.last[0] %>" cy="<%= spark.last[1] %>" r="3.5" fill="currentColor"/>
+          </svg>
+          <figcaption><span><%= d.dmy(spark.first) %></span><span><%= d.dmy(spark.lastDay) %></span></figcaption>
+        </figure>
+      <% } else { %>
+        <p class="empty">Cần ít nhất 2 lần ghi số liệu để vẽ biểu đồ.</p>
+      <% } %>
+    </section>
+
+    <% if (editable) { %>
+      <section class="panel">
+        <h2>Ghi số liệu mới</h2>
+        <form method="post" action="/channels/<%= ch.key %>/stats" class="grid-form">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <label class="field"><span>Ngày</span><input type="date" name="recorded_on" value="<%= today %>" required></label>
+          <label class="field"><span>Người theo dõi</span><input type="number" min="0" name="followers" inputmode="numeric"></label>
+          <label class="field"><span><%= isGoogle ? 'Lượt xem hồ sơ' : 'Tiếp cận' %></span><input type="number" min="0" name="reach" inputmode="numeric"></label>
+          <label class="field"><span><%= isGoogle ? 'Lượt gọi / chỉ đường' : 'Tương tác' %></span><input type="number" min="0" name="engagement" inputmode="numeric"></label>
+          <% if (isGoogle) { %>
+            <label class="field"><span>Điểm đánh giá</span><input type="number" min="0" max="5" step="0.1" name="rating"></label>
+            <label class="field"><span>Số đánh giá</span><input type="number" min="0" name="reviews"></label>
+          <% } %>
+          <label class="field field-wide"><span>Ghi chú</span><input type="text" name="note" maxlength="255" placeholder="Ví dụ: chạy quảng cáo 500k"></label>
+          <div class="field-wide"><button class="btn btn-primary" type="submit">Lưu số liệu</button></div>
+        </form>
+      </section>
+    <% } %>
+
+    <section class="panel panel-flush">
+      <div class="panel-head pad"><h2>Lịch sử số liệu</h2></div>
+      <% if (!stats.length) { %>
+        <p class="empty pad">Chưa có số liệu nào.</p>
+      <% } else { %>
+        <table class="table table-rows">
+          <thead><tr><th>Ngày</th><th class="num">Theo dõi</th><th class="num"><%= isGoogle ? 'Xem hồ sơ' : 'Tiếp cận' %></th><th class="num"><%= isGoogle ? 'Gọi/chỉ đường' : 'Tương tác' %></th><% if (isGoogle) { %><th class="num">Đánh giá</th><% } %><th>Ghi chú</th><% if (editable) { %><th><span class="sr-only">Xoá</span></th><% } %></tr></thead>
+          <tbody>
+          <% for (const s of stats) { %>
+            <tr>
+              <td class="nowrap"><%= d.dmy(s.recorded_on) %></td>
+              <td class="num"><%= s.followers != null ? num(s.followers) : '—' %></td>
+              <td class="num"><%= s.reach != null ? num(s.reach) : '—' %></td>
+              <td class="num"><%= s.engagement != null ? num(s.engagement) : '—' %></td>
+              <% if (isGoogle) { %><td class="num"><%= s.rating != null ? Number(s.rating).toFixed(1) + '★ (' + num(s.reviews) + ')' : '—' %></td><% } %>
+              <td><%= s.note || '' %> <small class="muted"><%= s.user_name || '' %></small></td>
+              <% if (editable) { %>
+                <td class="right">
+                  <form method="post" action="/channels/<%= ch.key %>/stats/<%= s.id %>/delete" data-confirm="Xoá dòng số liệu ngày <%= d.dmy(s.recorded_on) %>?">
+                    <input type="hidden" name="_csrf" value="<%= csrf %>">
+                    <button class="btn btn-small btn-quiet" type="submit">Xoá</button>
+                  </form>
+                </td>
+              <% } %>
+            </tr>
+          <% } %>
+          </tbody>
+        </table>
+      <% } %>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="panel">
+      <h2>Thông tin tài khoản</h2>
+      <% if (editable) { %>
+        <form method="post" action="/channels/<%= ch.key %>/account" class="stack">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <label class="field"><span>Tên hiển thị</span><input type="text" name="display_name" value="<%= account.display_name || '' %>"></label>
+          <label class="field"><span><%= isGoogle ? 'Tên trên Maps' : 'Tên tài khoản' %></span><input type="text" name="handle" value="<%= account.handle || '' %>" placeholder="<%= ch.key === 'tiktok' ? '@binbinhotel' : '' %>"></label>
+          <label class="field"><span>Đường dẫn</span><input type="url" name="url" value="<%= account.url || '' %>" placeholder="https://"></label>
+          <label class="field"><span>Người phụ trách</span>
+            <select name="owner_id"><option value="">Chưa phân công</option>
+              <% for (const u of users) { %><option value="<%= u.id %>"<%= Number(account.owner_id) === Number(u.id) ? ' selected' : '' %>><%= u.name %></option><% } %>
+            </select>
+          </label>
+          <label class="field"><span>Ghi chú</span><textarea name="notes" rows="4" placeholder="Giờ đăng hiệu quả, quy định riêng của kênh…"><%= account.notes || '' %></textarea>
+            <small>Không lưu mật khẩu ở đây. Dùng trình quản lý mật khẩu của công ty.</small></label>
+          <button class="btn" type="submit">Lưu thông tin</button>
+        </form>
+      <% } else { %>
+        <dl class="kv">
+          <dt>Tài khoản</dt><dd><%= account.handle || account.display_name || '—' %></dd>
+          <% if (account.notes) { %><dt>Ghi chú</dt><dd><%= account.notes %></dd><% } %>
+        </dl>
+      <% } %>
+    </section>
+
+    <section class="panel">
+      <h2>Bài đã đăng gần đây</h2>
+      <% if (!posts.length) { %><p class="empty">Chưa có bài nào được đánh dấu đã đăng.</p><% } else { %>
+        <ul class="plain-list">
+          <% for (const p of posts) { %>
+            <li>
+              <a href="/posts/<%= p.id %>"><%= p.title %></a>
+              <small class="muted block"><%= d.dmy(p.published_at) %>: <%= num(p.views) %> lượt xem, <%= num(Number(p.likes) + Number(p.comments) + Number(p.shares)) %> tương tác</small>
+            </li>
+          <% } %>
+        </ul>
+      <% } %>
+    </section>
+  </aside>
+</div>
+<%- include('../partials/bottom') %>

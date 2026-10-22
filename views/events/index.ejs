@@ -1,0 +1,48 @@
+<%- include('../partials/top') %>
+<header class="page-head">
+  <div><h1>Sự kiện</h1><p class="sub">Lễ, Tết, mùa du lịch và ưu đãi trong 6 tháng tính từ <%= d.dmy(from) %></p></div>
+  <% if (can('event:edit')) { %><a class="btn btn-primary" href="/events/new"><%- icon('plus') %> Thêm sự kiện</a><% } %>
+</header>
+
+<form class="filters" method="get">
+  <label class="field field-inline"><span>Từ ngày</span><input type="date" name="from" value="<%= from %>"></label>
+  <label class="field field-inline"><span>Loại</span>
+    <select name="kind" data-autosubmit>
+      <option value="">Tất cả</option>
+      <% for (const k of Object.values(C.EVENT_KINDS)) { %><option value="<%= k.key %>"<%= kind === k.key ? ' selected' : '' %>><%= k.label %></option><% } %>
+    </select>
+  </label>
+  <button class="btn" type="submit">Xem</button>
+</form>
+
+<% if (!months.length) { %>
+  <div class="panel empty-state"><p>Không có sự kiện nào trong khoảng này.</p><% if (can('event:edit')) { %><a class="btn btn-primary" href="/events/new">Thêm sự kiện</a><% } %></div>
+<% } %>
+
+<% for (const g of months) { %>
+  <section class="ev-month">
+    <h2><%= g.label %></h2>
+    <ul class="ev-list">
+      <% for (const ev of g.items) { const past = ev.occ_end < today; %>
+        <li class="ev-row<%= past ? ' is-past' : '' %>">
+          <div class="ev-when">
+            <strong><%= d.dm(ev.occ_start) %></strong>
+            <% if (ev.occ_end !== ev.occ_start) { %><small>đến <%= d.dm(ev.occ_end) %></small><% } else { %><small><%= d.weekday(ev.occ_start, true) %></small><% } %>
+          </div>
+          <span class="ev-kind ev-<%= ev.kind %>"><%= C.EVENT_KINDS[ev.kind] ? C.EVENT_KINDS[ev.kind].label : ev.kind %></span>
+          <div class="ev-body">
+            <p class="ev-title"><%= ev.title %><% if (Number(ev.recurring)) { %> <small class="muted">hằng năm</small><% } %></p>
+            <% if (ev.description) { %><p class="muted small"><%= ev.description %></p><% } %>
+          </div>
+          <div class="ev-posts">
+            <% if (ev.post_count) { %><span><%= ev.post_count %> bài</span>
+            <% } else if (!past) { %><span class="warn">Chưa có bài</span><% } %>
+            <% if (!past && can('post:create')) { %><a class="btn btn-small" href="/posts/new?event=<%= ev.id %>&date=<%= d.addDays(ev.occ_start, -3) < today ? today : d.addDays(ev.occ_start, -3) %>">Soạn bài</a><% } %>
+            <% if (can('event:edit')) { %><a class="btn btn-small btn-quiet" href="/events/<%= ev.id %>/edit">Sửa</a><% } %>
+          </div>
+        </li>
+      <% } %>
+    </ul>
+  </section>
+<% } %>
+<%- include('../partials/bottom') %>

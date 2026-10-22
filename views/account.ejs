@@ -1,0 +1,17 @@
+<%- include('partials/top') %>
+<header class="page-head">
+  <div><h1>Tài khoản của tôi</h1><p class="sub"><%= user.email %>, vai trò <%= C.ROLES[user.role].label.toLowerCase() %></p></div>
+</header>
+
+<section class="panel narrow">
+  <h2>Đổi mật khẩu</h2>
+  <% if (error) { %><p class="field-error" role="alert"><%= error %></p><% } %>
+  <form method="post" action="/account/password" class="stack">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <label class="field"><span>Mật khẩu hiện tại</span><input type="password" name="current" autocomplete="current-password" required></label>
+    <label class="field"><span>Mật khẩu mới</span><input type="password" name="password" autocomplete="new-password" minlength="8" required><small>Ít nhất 8 ký tự.</small></label>
+    <label class="field"><span>Nhập lại mật khẩu mới</span><input type="password" name="confirm" autocomplete="new-password" minlength="8" required></label>
+    <div><button class="btn btn-primary" type="submit">Đổi mật khẩu</button></div>
+  </form>
+</section>
+<%- include('partials/bottom') %>

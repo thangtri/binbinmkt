@@ -1,0 +1,112 @@
+<%- include('../partials/top') %>
+<%
+  const isNew = !post.id;
+  const date = post.scheduled_at ? post.scheduled_at.slice(0, 10) : '';
+  const time = post.scheduled_at ? post.scheduled_at.slice(11, 16) : '09:00';
+  const action = (isNew ? '/posts' : '/posts/' + post.id) + '?_csrf=' + csrf;
+  const formats = Object.fromEntries(Object.values(C.CHANNELS).map((c) => [c.key, c.formats]));
+  const limits = Object.fromEntries(Object.values(C.CHANNELS).map((c) => [c.key, c.limit || 0]));
+  const tips = Object.fromEntries(Object.values(C.CHANNELS).map((c) => [c.key, c.tips]));
+%>
+<header class="page-head">
+  <div>
+    <p class="crumbs"><a href="/posts">Bài đăng</a><% if (!isNew) { %> / <a href="/posts/<%= post.id %>"><%= post.title %></a><% } %></p>
+    <h1><%= isNew ? 'Soạn bài mới' : 'Sửa bài' %></h1>
+  </div>
+</header>
+
+<% if (error) { %><div class="flash flash-error" role="alert"><%= error %></div><% } %>
+<% if (post.review_note && post.status === 'draft') { %>
+  <div class="flash flash-warn"><strong>Góp ý khi duyệt:</strong> <%= post.review_note %></div>
+<% } %>
+
+<form method="post" action="<%= action %>" enctype="multipart/form-data" class="editor"
+      data-post-form data-formats="<%= JSON.stringify(formats) %>" data-limits="<%= JSON.stringify(limits) %>" data-tips="<%= JSON.stringify(tips) %>">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <div class="editor-main panel">
+    <label class="field">
+      <span>Tiêu đề nội bộ</span>
+      <input type="text" name="title" value="<%= post.title %>" maxlength="200" required placeholder="Ví dụ: Ưu đãi phòng đôi cuối tuần">
+      <small>Chỉ team thấy, dùng để nhận ra bài trên lịch.</small>
+    </label>
+
+    <div class="field">
+      <span id="ch-label">Kênh đăng</span>
+      <div class="ch-pick" role="radiogroup" aria-labelledby="ch-label">
+        <% for (const ch of Object.values(C.CHANNELS)) { %>
+          <label class="ch-option ch-<%= ch.key %>">
+            <input type="radio" name="channel" value="<%= ch.key %>"<%= post.channel === ch.key ? ' checked' : '' %> required>
+            <span><b><%= ch.code %></b><%= ch.name %></span>
+          </label>
+        <% } %>
+      </div>
+      <small data-tip><%= C.CHANNELS[post.channel] ? C.CHANNELS[post.channel].tips : '' %></small>
+    </div>
+
+    <label class="field">
+      <span>Nội dung đăng</span>
+      <textarea name="caption" rows="12" data-caption placeholder="Viết nội dung như khách sẽ đọc trên kênh"><%= post.caption %></textarea>
+      <small class="counter" data-counter aria-live="polite"></small>
+    </label>
+
+    <label class="field">
+      <span>Hashtag</span>
+      <input type="text" name="hashtags" value="<%= post.hashtags %>" placeholder="#BinBinHotel #KhachSan">
+    </label>
+
+    <div class="field">
+      <span>Ảnh hoặc video</span>
+      <% if (post.media_path) { %>
+        <div class="media-current">
+          <% if (/\.(mp4|mov|webm)$/i.test(post.media_path)) { %>
+            <video src="/uploads/<%= post.media_path %>" controls preload="metadata"></video>
+          <% } else { %>
+            <img src="/uploads/<%= post.media_path %>" alt="Ảnh đính kèm hiện tại">
+          <% } %>
+          <label class="check"><input type="checkbox" name="remove_media" value="1"> Gỡ file này</label>
+        </div>
+      <% } %>
+      <input type="file" name="media" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm" data-media-input>
+      <small>Tối đa 50 MB. Chọn file mới sẽ thay file hiện tại.</small>
+      <div class="media-preview" data-media-preview hidden></div>
+    </div>
+  </div>
+
+  <aside class="editor-side">
+    <div class="panel stack">
+      <h2>Lịch đăng</h2>
+      <div class="row-2">
+        <label class="field"><span>Ngày</span><input type="date" name="date" value="<%= date %>"></label>
+        <label class="field"><span>Giờ</span><input type="time" name="time" value="<%= time %>"></label>
+      </div>
+      <label class="field"><span>Định dạng</span>
+        <select name="format" data-format data-current="<%= post.format || '' %>">
+          <% for (const f of (C.CHANNELS[post.channel] || C.CHANNELS.facebook).formats) { %>
+            <option<%= post.format === f ? ' selected' : '' %>><%= f %></option>
+          <% } %>
+        </select>
+      </label>
+      <label class="field"><span>Gắn với sự kiện</span>
+        <select name="event_id">
+          <option value="">Không gắn</option>
+          <% for (const ev of events) { %>
+            <option value="<%= ev.id %>"<%= Number(post.event_id) === Number(ev.id) ? ' selected' : '' %>><%= ev.title %><%= Number(ev.recurring) ? ' (hằng năm)' : ' (' + d.dmy(ev.start_date) + ')' %></option>
+          <% } %>
+        </select>
+      </label>
+      <label class="field"><span>Ghi chú cho team</span><textarea name="notes" rows="3" placeholder="Ai quay, cần chuẩn bị gì…"><%= post.notes %></textarea></label>
+    </div>
+
+    <div class="panel stack actions-panel">
+      <% if (user.role === 'admin' && post.status !== 'published') { %>
+        <button class="btn btn-primary btn-block" type="submit" name="intent" value="approve">Lưu và duyệt</button>
+      <% } else if (['draft', 'pending'].includes(post.status)) { %>
+        <button class="btn btn-primary btn-block" type="submit" name="intent" value="submit">Lưu và gửi duyệt</button>
+      <% } %>
+      <button class="btn btn-block" type="submit" name="intent" value="save"><%= post.status === 'draft' ? 'Lưu nháp' : 'Lưu thay đổi' %></button>
+      <% if (post.status === 'scheduled' && user.role !== 'admin') { %><p class="hint">Bài này đã được duyệt. Sửa xong bài sẽ cần duyệt lại.</p><% } %>
+      <a class="btn btn-quiet btn-block" href="<%= isNew ? '/posts' : '/posts/' + post.id %>">Huỷ</a>
+    </div>
+  </aside>
+</form>
+<%- include('../partials/bottom') %>
