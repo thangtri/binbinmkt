@@ -257,6 +257,64 @@ const migrations = [
       'ALTER TABLE post_channels ADD COLUMN external_id VARCHAR(200) NULL',
     ];
   },
+  // Nhiều chi nhánh: mỗi chi nhánh một địa điểm Google Maps; Facebook, TikTok, Zalo OA dùng chung
+  function branches({ id, longtext, tail }) {
+    return [
+      `CREATE TABLE branches (
+        id ${id},
+        name VARCHAR(150) NOT NULL,
+        address VARCHAR(300) NULL,
+        hotline VARCHAR(60) NULL,
+        zalo VARCHAR(150) NULL,
+        maps_url VARCHAR(500) NULL,
+        place_id VARCHAR(200) NULL,
+        sync_status VARCHAR(20) NULL,
+        sync_error VARCHAR(500) NULL,
+        last_synced_at DATETIME NULL,
+        extra ${longtext} NULL,
+        active INT NOT NULL DEFAULT 1,
+        position INT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL
+      )${tail}`,
+      'ALTER TABLE channel_stats ADD COLUMN branch_id INT NULL',
+      'CREATE INDEX idx_stats_branch ON channel_stats (branch_id, recorded_on)',
+      `CREATE TABLE post_google (
+        id ${id},
+        post_id INT NOT NULL,
+        branch_id INT NOT NULL,
+        published_url VARCHAR(500) NULL,
+        updated_at DATETIME NULL
+      )${tail}`,
+      'CREATE UNIQUE INDEX idx_post_google ON post_google (post_id, branch_id)',
+      // Địa điểm Google Maps đang theo dõi trở thành chi nhánh đầu tiên
+      async () => {
+        const dates = require('../lib/dates');
+        const g = await db.get(`SELECT * FROM channel_accounts WHERE channel = 'google'`);
+        const s = Object.fromEntries((await db.all('SELECT name, value FROM settings')).map((r) => [r.name, r.value]));
+        const r = await db.run(
+          `INSERT INTO branches (name, address, hotline, zalo, maps_url, place_id, sync_status, sync_error, last_synced_at, extra, active, position, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 0, ?)`,
+          [
+            s.hotel_name || 'Bin Bin Hotel',
+            s.address || null,
+            s.hotline || null,
+            s.zalo || null,
+            g?.url || null,
+            g?.external_id || null,
+            g?.sync_status || null,
+            g?.sync_error || null,
+            g?.last_synced_at || null,
+            g?.extra || null,
+            dates.now(),
+          ]
+        );
+        await db.run(`UPDATE channel_stats SET branch_id = ? WHERE channel = 'google'`, [r.insertId]);
+        for (const p of await db.all(`SELECT post_id, published_url FROM post_channels WHERE channel = 'google' AND published_url IS NOT NULL`)) {
+          await db.run('INSERT INTO post_google (post_id, branch_id, published_url, updated_at) VALUES (?, ?, ?, ?)', [p.post_id, r.insertId, p.published_url, dates.now()]);
+        }
+      },
+    ];
+  },
 ];
 
 async function migrate() {

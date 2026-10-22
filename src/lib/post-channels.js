@@ -47,4 +47,28 @@ async function update(postId, channel, fields) {
   ]);
 }
 
-module.exports = { ensure, list, update, recalcTotals };
+/* Google Maps đăng riêng từng chi nhánh: link lưu trong post_google.
+   Dòng 'google' của bài chỉ có link khi mọi chi nhánh đang hoạt động đều đã đăng. */
+
+async function googleLinks(postId) {
+  return db.all(
+    `SELECT b.id AS branch_id, b.name, pg.published_url FROM branches b
+     LEFT JOIN post_google pg ON pg.branch_id = b.id AND pg.post_id = ?
+     WHERE b.active = 1 ORDER BY b.position, b.id`,
+    [postId]
+  );
+}
+
+async function saveGoogleLink(postId, branchId, url) {
+  const exists = await db.get('SELECT id FROM post_google WHERE post_id = ? AND branch_id = ?', [postId, branchId]);
+  if (exists) await db.run('UPDATE post_google SET published_url = ?, updated_at = ? WHERE id = ?', [url, dates.now(), exists.id]);
+  else await db.run('INSERT INTO post_google (post_id, branch_id, published_url, updated_at) VALUES (?, ?, ?, ?)', [postId, branchId, url, dates.now()]);
+}
+
+async function syncGoogleRow(postId) {
+  const links = await googleLinks(postId);
+  const done = links.length > 0 && links.every((l) => l.published_url);
+  await update(postId, 'google', { published_url: done ? links[0].published_url : null });
+}
+
+module.exports = { ensure, list, update, recalcTotals, googleLinks, saveGoogleLink, syncGoogleRow };

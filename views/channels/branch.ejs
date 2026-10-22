@@ -1,0 +1,116 @@
+<%- include('../partials/top') %>
+<%
+  const editable = can('channel:edit');
+  const fmt = (m, v) => (v == null ? '—' : m.decimals ? Number(v).toFixed(m.decimals) : num(v));
+  let chart = null;
+  if (series.length >= 2) {
+    const W = 640, H = 200, L = 52, R = 16, T = 14, B = 28;
+    const vals = series.map((s) => s.value);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    if (min === max) { min -= 1; max += 1; }
+    const padV = (max - min) * 0.12; min -= padV; max += padV;
+    const x = (i) => L + (i * (W - L - R)) / (series.length - 1);
+    const y = (v) => T + (H - T - B) * (1 - (v - min) / (max - min));
+    const pts = series.map((s, i) => [x(i), y(s.value)]);
+    const line = pts.map((p) => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    const area = `M${pts[0][0].toFixed(1)},${H - B} L` + line.replace(/ /g, ' L') + ` L${pts[pts.length - 1][0].toFixed(1)},${H - B} Z`;
+    const ticks = [0, 0.5, 1].map((t) => { const v = min + (max - min) * t; return { y: y(v), label: chartMetric.decimals ? v.toFixed(1) : num(Math.round(v)) }; });
+    chart = { W, H, L, R, B, pts, line, area, ticks };
+  }
+%>
+<header class="page-head">
+  <div>
+    <p class="crumbs"><a href="/channels">Kênh</a> / <a href="/channels/google">Google Maps</a></p>
+    <h1><%= b.name %></h1>
+    <p class="sub"><%= b.address || '' %><% if (b.hotline) { %> <span class="muted">Hotline <%= b.hotline %></span><% } %></p>
+  </div>
+  <div class="toolbar">
+    <% if (b.maps_url) { %><a class="btn" href="<%= b.maps_url %>" target="_blank" rel="noopener"><%- icon('link') %> Mở trên Google Maps</a><% } %>
+    <% if (editable && b.place_id) { %>
+      <form method="post" action="/channels/google/branch/<%= b.id %>/clear" data-confirm="Bỏ theo dõi Google Maps của <%= b.name %>? Số liệu cũ vẫn được giữ.">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <button class="btn btn-quiet" type="submit">Bỏ theo dõi</button>
+      </form>
+    <% } %>
+  </div>
+</header>
+
+<% if (!b.place_id) { %>
+  <div class="flash flash-warn">Chi nhánh này chưa có link Google Maps. <a href="/channels/google">Dán link ở trang Google Maps</a> để hệ thống tự lấy số liệu.</div>
+<% } else if (b.sync_status === 'error') { %>
+  <div class="flash flash-error">Lần cập nhật gần nhất bị lỗi: <%= b.sync_error %></div>
+<% } %>
+
+<section class="kpis">
+  <% for (const m of metrics) { %>
+    <div class="kpi">
+      <span class="kpi-label"><%= m.label %></span>
+      <span class="kpi-value"><%= fmt(m, m.value) %><%= m.key === 'rating' && m.value != null ? '★' : '' %></span>
+      <% if (m.value == null) { %><span class="kpi-note">Chưa có số liệu</span>
+      <% } else if (m.delta) { %><span class="kpi-note <%= m.delta > 0 ? 'up' : 'down' %>"><%= m.delta > 0 ? '+' : '' %><%= fmt(m, m.delta) %> so với <%= d.dm(m.prevOn) %></span>
+      <% } else { %><span class="kpi-note">Cập nhật <%= d.dm(m.on) %></span><% } %>
+    </div>
+  <% } %>
+</section>
+
+<div class="detail">
+  <div class="stack">
+    <section class="panel">
+      <div class="panel-head"><h2><%= chartMetric.label %> theo thời gian</h2><% if (series.length) { %><span class="muted small"><%= series.length %> lần ghi</span><% } %></div>
+      <% if (chart) { %>
+        <svg class="chart" viewBox="0 0 <%= chart.W %> <%= chart.H %>" role="img" aria-label="<%= chartMetric.label %> của <%= b.name %>">
+          <% for (const t of chart.ticks) { %>
+            <line x1="<%= chart.L %>" x2="<%= chart.W - chart.R %>" y1="<%= t.y.toFixed(1) %>" y2="<%= t.y.toFixed(1) %>" class="grid"/>
+            <text x="<%= chart.L - 8 %>" y="<%= (t.y + 4).toFixed(1) %>" text-anchor="end" class="tick"><%= t.label %></text>
+          <% } %>
+          <path d="<%= chart.area %>" class="area"/>
+          <polyline points="<%= chart.line %>" class="line"/>
+          <% chart.pts.forEach((p, i) => { %>
+            <circle cx="<%= p[0].toFixed(1) %>" cy="<%= p[1].toFixed(1) %>" r="<%= i === chart.pts.length - 1 ? 4.5 : 3 %>" class="dot<%= i === chart.pts.length - 1 ? ' dot-last' : '' %>"><title><%= d.dmy(series[i].day) %>: <%= fmt(chartMetric, series[i].value) %></title></circle>
+          <% }) %>
+          <text x="<%= chart.L %>" y="<%= chart.H - 8 %>" class="tick"><%= d.dmy(series[0].day) %></text>
+          <text x="<%= chart.W - chart.R %>" y="<%= chart.H - 8 %>" text-anchor="end" class="tick"><%= d.dmy(series[series.length - 1].day) %></text>
+        </svg>
+      <% } else { %>
+        <div class="empty-chart"><p><strong>Chưa đủ số liệu để vẽ biểu đồ.</strong></p><p class="muted">Hệ thống ghi số liệu mỗi ngày; biểu đồ hiện từ ngày thứ hai.</p></div>
+      <% } %>
+    </section>
+
+    <section class="panel panel-flush">
+      <div class="panel-head pad"><h2>Lịch sử số liệu</h2></div>
+      <% if (!stats.length) { %><p class="empty pad">Chưa có số liệu nào.</p><% } else { %>
+        <table class="table table-rows">
+          <thead><tr><th>Ngày</th><th class="num">Điểm</th><th class="num">Đánh giá</th><th>Nguồn</th></tr></thead>
+          <tbody>
+            <% for (const s of stats.slice(0, 20)) { %>
+              <tr><td class="nowrap"><%= d.dmy(s.recorded_on) %></td>
+                <td class="num"><%= s.rating != null ? Number(s.rating).toFixed(1) + '★' : '—' %></td>
+                <td class="num"><%= s.reviews != null ? num(s.reviews) : '—' %></td>
+                <td><%= s.source === 'auto' ? 'Tự động' : 'Nhập tay' %></td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      <% } %>
+    </section>
+  </div>
+
+  <aside class="stack">
+    <section class="panel">
+      <div class="panel-head"><h2>Đánh giá gần đây</h2><% if (extra.profile && extra.profile.url) { %><a href="<%= extra.profile.url %>" target="_blank" rel="noopener">Trả lời trên Google</a><% } %></div>
+      <% if (!extra.recentReviews || !extra.recentReviews.length) { %>
+        <p class="empty">Chưa có đánh giá nào được lấy về.</p>
+      <% } else { %>
+        <ul class="reviews">
+          <% for (const r of extra.recentReviews) { %>
+            <li>
+              <div class="review-head"><strong><%= r.author %></strong><span class="stars" aria-label="<%= r.rating %> sao"><%= '★'.repeat(Math.round(r.rating || 0)) %><span class="stars-off"><%= '★'.repeat(5 - Math.round(r.rating || 0)) %></span></span><span class="muted small"><%= r.when %></span></div>
+              <% if (r.text) { %><p><%= r.text %></p><% } %>
+            </li>
+          <% } %>
+        </ul>
+        <p class="hint">Google chỉ cung cấp tối đa 5 đánh giá tiêu biểu qua API.</p>
+      <% } %>
+    </section>
+  </aside>
+</div>
+<%- include('../partials/bottom') %>

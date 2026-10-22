@@ -45,6 +45,13 @@ async function disconnect(channel) {
     `UPDATE channel_accounts SET external_id = NULL, sync_status = NULL, sync_error = NULL, last_synced_at = NULL, extra = NULL, updated_at = ? WHERE channel = ?`,
     [dates.now(), channel]
   );
+  if (channel === 'google') await db.run('UPDATE branches SET place_id = NULL, sync_status = NULL, sync_error = NULL');
+}
+
+// Google Maps "đã kết nối" khi ít nhất một chi nhánh có địa điểm
+async function markGoogleConnected() {
+  const n = await db.get('SELECT COUNT(*) AS n FROM branches WHERE place_id IS NOT NULL AND active = 1');
+  await db.run(`UPDATE channel_accounts SET external_id = ? WHERE channel = 'google'`, [Number(n.n) ? 'branches' : null]);
 }
 
 function isConnected(account, token) {
@@ -88,7 +95,50 @@ async function updatePostMetrics(channel, items) {
   return matched;
 }
 
+// Google Maps: mỗi chi nhánh một địa điểm, ghi số liệu riêng theo branch_id
+async function syncGoogle(user = null) {
+  const conn = connectors.google;
+  const now = dates.now();
+  const today = dates.today();
+  const list = (await require('./branches').list()).filter((b) => b.place_id);
+  const errors = [];
+  let ok = 0;
+  if (!conn.isConfigured()) errors.push('Kênh này chưa được cấu hình khoá API trên máy chủ.');
+  else if (!list.length) errors.push('Chưa có chi nhánh nào được dán link Google Maps.');
+  else {
+    for (const b of list) {
+      try {
+        const s = await conn.fetchStats({ external_id: b.place_id });
+        const existing = await db.get(`SELECT id FROM channel_stats WHERE channel = 'google' AND branch_id = ? AND recorded_on = ? AND source = 'auto'`, [b.id, today]);
+        if (existing) {
+          await db.run('UPDATE channel_stats SET rating = ?, reviews = ?, created_at = ? WHERE id = ?', [s.rating ?? null, s.reviews ?? null, now, existing.id]);
+        } else {
+          await db.run(
+            `INSERT INTO channel_stats (channel, branch_id, recorded_on, rating, reviews, source, created_by, created_at)
+             VALUES ('google', ?, ?, ?, ?, 'auto', ?, ?)`,
+            [b.id, today, s.rating ?? null, s.reviews ?? null, user?.id || null, now]
+          );
+        }
+        const extra = { profile: s.profile || {}, recentReviews: s.recentReviews || [] };
+        await db.run(`UPDATE branches SET sync_status = 'ok', sync_error = NULL, last_synced_at = ?, extra = ? WHERE id = ?`, [now, JSON.stringify(extra), b.id]);
+        ok++;
+      } catch (err) {
+        const msg = String(err.message || err).slice(0, 500);
+        await db.run(`UPDATE branches SET sync_status = 'error', sync_error = ?, last_synced_at = ? WHERE id = ?`, [msg, now, b.id]);
+        errors.push(`${b.name}: ${msg}`);
+      }
+    }
+  }
+  await db.run(`UPDATE channel_accounts SET sync_status = ?, sync_error = ?, last_synced_at = ? WHERE channel = 'google'`, [
+    errors.length ? (ok ? 'warn' : 'error') : 'ok',
+    errors.join('; ').slice(0, 500) || null,
+    now,
+  ]);
+  return { ok: ok > 0 && !errors.length, partial: ok > 0 && errors.length > 0, error: errors.join('; '), synced: ok };
+}
+
 async function sync(channel, user = null) {
+  if (channel === 'google') return syncGoogle(user);
   const conn = connectors[channel];
   const account = await db.get('SELECT * FROM channel_accounts WHERE channel = ?', [channel]);
   if (!conn || !account) return { ok: false, error: 'Không có kênh này.' };
@@ -166,4 +216,4 @@ function start() {
   setInterval(tick, 30 * 60 * 1000).unref();
 }
 
-module.exports = { connectors, getToken, saveToken, freshToken, disconnect, isConnected, sync, start };
+module.exports = { connectors, getToken, saveToken, freshToken, disconnect, isConnected, markGoogleConnected, sync, start };

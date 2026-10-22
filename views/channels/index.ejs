@@ -18,7 +18,7 @@
           <span class="cc-value muted">Chưa có số liệu</span>
         <% } else { %>
           <span class="cc-value"><%= isG ? p.value.toFixed(1) + '★' : num(p.value) %></span>
-          <span class="cc-label"><%= isG ? 'từ ' + num(r.reviews.value) + ' đánh giá' : 'người theo dõi' %></span>
+          <span class="cc-label"><%= isG ? 'từ ' + num(r.reviews.value) + ' đánh giá, ' + r.chain.tracked + '/' + r.chain.branches + ' chi nhánh' : 'người theo dõi' %></span>
           <% if (p.delta) { %><span class="cc-delta <%= p.delta > 0 ? 'up' : 'down' %>"><%= p.delta > 0 ? '+' : '' %><%= isG ? p.delta.toFixed(1) : num(p.delta) %> so với <%= d.dm(p.prevOn) %></span><% } %>
         <% } %>
       </div>

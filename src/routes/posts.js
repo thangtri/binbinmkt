@@ -227,6 +227,7 @@ router.get(
       title: post.title,
       post,
       channels: await postChannels.list(post.id),
+      googleLinks: await postChannels.googleLinks(post.id),
       mediaList: await media.list(post.id),
       autoChannels: publisher.AUTO,
       canEdit: canEdit(req.user, post),
@@ -338,9 +339,18 @@ router.post(
 // Link của bài trên từng kênh: url_facebook, url_tiktok, url_google, url_zalo
 async function saveUrls(postId, body) {
   for (const ch of Object.keys(CHANNELS)) {
-    if (body[`url_${ch}`] === undefined) continue;
+    if (ch === 'google' || body[`url_${ch}`] === undefined) continue;
     await postChannels.update(postId, ch, { published_url: safeUrl(body[`url_${ch}`]) || null });
   }
+  // Google Maps: một link cho mỗi chi nhánh (url_google_<id>)
+  let touched = false;
+  for (const l of await postChannels.googleLinks(postId)) {
+    const v = body[`url_google_${l.branch_id}`];
+    if (v === undefined) continue;
+    await postChannels.saveGoogleLink(postId, l.branch_id, safeUrl(v) || null);
+    touched = true;
+  }
+  if (touched) await postChannels.syncGoogleRow(postId);
 }
 
 router.post(

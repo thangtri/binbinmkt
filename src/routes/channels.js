@@ -7,6 +7,7 @@ const { CHANNELS } = require('../lib/constants');
 const { requirePerm } = require('../lib/auth');
 const sync = require('../lib/sync');
 const ai = require('../lib/ai');
+const branches = require('../lib/branches');
 const { h, flash, logActivity, str, int, safeUrl } = require('../lib/util');
 
 const router = express.Router();
@@ -98,8 +99,15 @@ router.get(
       );
       const stats = await db.all('SELECT * FROM channel_stats WHERE channel = ? ORDER BY recorded_on DESC, id DESC LIMIT 60', [ch.key]);
       const metrics = metricsFor(ch.key);
-      const primary = summarize(stats, metrics[0]);
-      const reviews = ch.key === 'google' ? summarize(stats, metrics[1]) : null;
+      let primary = summarize(stats, metrics[0]);
+      let reviews = null;
+      let chain = null;
+      if (ch.key === 'google') {
+        // Google Maps: điểm trung bình cả chuỗi theo số đánh giá từng chi nhánh
+        chain = branches.chainRating(await branches.googleSnapshot());
+        primary = { ...metrics[0], value: chain.rating, delta: null };
+        reviews = { ...metrics[1], value: chain.reviews };
+      }
       const perf = await db.get(
         `SELECT COUNT(*) AS posts, COALESCE(SUM(pc.views), 0) AS views,
                 COALESCE(SUM(COALESCE(pc.likes, 0) + COALESCE(pc.comments, 0) + COALESCE(pc.shares, 0)), 0) AS interactions
@@ -111,7 +119,7 @@ router.get(
         `SELECT COUNT(*) AS n FROM posts WHERE status IN ('pending', 'scheduled') AND scheduled_at >= ?`,
         [dates.now()]
       );
-      rows.push({ ch, account, primary, reviews, perf, upcoming: Number(upcoming.n), conn: await connection(ch, account) });
+      rows.push({ ch, account, primary, reviews, chain, perf, upcoming: Number(upcoming.n), conn: await connection(ch, account) });
     }
     res.render('channels/index', { title: 'Kênh mạng xã hội', rows });
   })
@@ -237,7 +245,12 @@ router.post(
     const link = str(req.body.link, 500);
     try {
       const placeId = await sync.connectors.google.resolveLink(link);
-      await db.run('UPDATE channel_accounts SET external_id = ?, url = ?, updated_at = ? WHERE channel = ?', [placeId, safeUrl(link) || null, dates.now(), 'google']);
+      // Link gắn với chi nhánh được chọn (mặc định chi nhánh đầu tiên)
+      const list = await require('../lib/branches').list();
+      const branch = list.find((b) => b.id === int(req.body.branch_id)) || list[0];
+      if (!branch) throw new Error('Chưa có chi nhánh nào. Thêm chi nhánh trong mục Thông tin khách sạn.');
+      await require('../lib/branches').setPlace(branch.id, { placeId, url: link });
+      await sync.markGoogleConnected();
       await afterConnect(req, CHANNELS.google);
     } catch (err) {
       flash(req, 'error', err.message);
@@ -253,7 +266,8 @@ router.post(
     const ch = channelOr404(req);
     const r = await sync.sync(ch.key, req.user);
     if (r.ok) await logActivity(req.user, 'channel.sync', 'channel', null, ch.name);
-    flash(req, r.ok ? 'success' : 'error', r.ok ? `Đã cập nhật số liệu ${ch.name}${r.matched ? `, khớp ${r.matched} bài đã đăng` : ''}.` : `Không cập nhật được: ${r.error}`);
+    if (r.partial) flash(req, 'warn', `Đã cập nhật ${r.synced} chi nhánh. Chưa cập nhật được: ${r.error}`);
+    else flash(req, r.ok ? 'success' : 'error', r.ok ? `Đã cập nhật số liệu ${ch.name}${r.matched ? `, khớp ${r.matched} bài đã đăng` : ''}.` : `Không cập nhật được: ${r.error}`);
     res.redirect(`/channels/${ch.key}`);
   })
 );
@@ -283,6 +297,81 @@ router.post(
       flash(req, 'error', `Chưa phân tích được: ${err.message}`);
     }
     res.redirect(`/channels/${ch.key}#ai`);
+  })
+);
+
+/* ---------- Google Maps theo chi nhánh ---------- */
+
+router.get(
+  '/google',
+  h(async (req, res) => {
+    const ch = CHANNELS.google;
+    const account = await db.get(
+      'SELECT a.*, u.name AS owner_name FROM channel_accounts a LEFT JOIN users u ON u.id = a.owner_id WHERE a.channel = ?',
+      ['google']
+    );
+    const snap = await branches.googleSnapshot();
+    const users = await db.all(`SELECT id, name FROM users WHERE active = 1 AND role IN ('admin', 'editor') ORDER BY name`);
+    res.render('channels/google', {
+      title: ch.name,
+      ch,
+      account,
+      snap,
+      chain: branches.chainRating(snap),
+      conn: await connection(ch, account),
+      insight: await ai.latest('google'),
+      aiConfigured: ai.isConfigured(),
+      users,
+    });
+  })
+);
+
+router.get(
+  '/google/branch/:id',
+  h(async (req, res) => {
+    const b = await branches.get(req.params.id);
+    if (!b) {
+      const err = new Error('Không có chi nhánh này.');
+      err.status = 404;
+      err.expose = true;
+      throw err;
+    }
+    const stats = await db.all(
+      `SELECT * FROM channel_stats WHERE channel = 'google' AND branch_id = ? ORDER BY recorded_on DESC, id DESC LIMIT 60`,
+      [b.id]
+    );
+    const metrics = METRICS.google.map((m) => summarize(stats, m));
+    const chartMetric = metrics.find((m) => stats.filter((s) => s[m.key] != null).length >= 2) || metrics[0];
+    const series = stats
+      .filter((s) => s[chartMetric.key] != null)
+      .slice(0, 26)
+      .reverse()
+      .map((s) => ({ day: s.recorded_on, value: Number(s[chartMetric.key]) }));
+    res.render('channels/branch', {
+      title: `${b.name} trên Google Maps`,
+      ch: CHANNELS.google,
+      b,
+      extra: branches.parseExtra(b),
+      configured: sync.connectors.google.isConfigured(),
+      stats,
+      metrics,
+      chartMetric,
+      series,
+    });
+  })
+);
+
+router.post(
+  '/google/branch/:id/clear',
+  requirePerm('channel:edit'),
+  h(async (req, res) => {
+    const b = await branches.get(req.params.id);
+    if (b) {
+      await branches.setPlace(b.id, { placeId: null, url: null });
+      await sync.markGoogleConnected();
+      flash(req, 'success', `Đã bỏ theo dõi Google Maps của ${b.name}. Số liệu cũ vẫn được giữ.`);
+    }
+    res.redirect('/channels/google');
   })
 );
 

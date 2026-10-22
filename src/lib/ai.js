@@ -62,7 +62,8 @@ Cách viết:
 - So sánh xu hướng theo thời gian (tăng, giảm, đứng yên) thay vì chỉ đọc lại số mới nhất.
 - Đề xuất phải làm được ngay: loại nội dung, giờ đăng, chủ đề gắn với sự kiện sắp tới, cách trả lời đánh giá.
 - Nếu dữ liệu còn quá ít để kết luận, nói rõ điều đó trong phần tổng quan và đề xuất cách thu thêm dữ liệu.
-- Với đánh giá Google, nêu khách khen gì và phàn nàn gì nếu có nội dung đánh giá.`;
+- Với đánh giá Google, nêu khách khen gì và phàn nàn gì nếu có nội dung đánh giá.
+- Google Maps có nhiều chi nhánh (trường chi_nhanh): so sánh điểm, số đánh giá và nội dung đánh giá giữa các chi nhánh, chỉ rõ chi nhánh nào cần cải thiện và vì sao; nêu tên chi nhánh khi đề xuất.`;
 
 async function gather(channel) {
   const account = await db.get('SELECT * FROM channel_accounts WHERE channel = ?', [channel]);
@@ -89,8 +90,26 @@ async function gather(channel) {
   } catch {
     extra = {};
   }
+  let chiNhanh = [];
+  if (channel === 'google') {
+    const branches = require('./branches');
+    for (const b of await branches.list()) {
+      const rows = await db.all(
+        `SELECT recorded_on, rating, reviews FROM channel_stats WHERE channel = 'google' AND branch_id = ? ORDER BY recorded_on DESC, id DESC LIMIT 30`,
+        [b.id]
+      );
+      chiNhanh.push({
+        ten: b.name,
+        dia_chi: b.address,
+        dang_theo_doi: Boolean(b.place_id),
+        so_lieu_theo_ngay: rows.reverse(),
+        danh_gia_gan_day: branches.parseExtra(b).recentReviews || [],
+      });
+    }
+  }
   return {
     kenh: CHANNELS[channel].name,
+    chi_nhanh: chiNhanh,
     hom_nay: dates.today(),
     so_lieu_theo_ngay: stats.reverse(),
     bai_da_dang_45_ngay: posts,
@@ -104,7 +123,8 @@ async function gather(channel) {
 async function analyze(channel, user = null) {
   if (!isConfigured()) throw new Error('Chưa cấu hình ANTHROPIC_API_KEY trên máy chủ.');
   const data = await gather(channel);
-  if (!data.so_lieu_theo_ngay.length && !data.bai_da_dang_45_ngay.length && !data.danh_gia_google_gan_day.length) {
+  const branchData = data.chi_nhanh.some((b) => b.so_lieu_theo_ngay.length || b.danh_gia_gan_day.length);
+  if (!data.so_lieu_theo_ngay.length && !data.bai_da_dang_45_ngay.length && !data.danh_gia_google_gan_day.length && !branchData) {
     throw new Error('Chưa có số liệu nào để phân tích. Kết nối kênh và cập nhật số liệu trước.');
   }
 
@@ -153,7 +173,7 @@ async function latest(channel) {
 
 /* ---------- Viết bài và gợi ý ý tưởng ---------- */
 
-function hotelBrief(s) {
+function hotelBrief(s, branchList = []) {
   const lines = [
     `Tên: ${s.hotel_name}`,
     s.address && `Địa chỉ: ${s.address}`,
@@ -165,6 +185,9 @@ function hotelBrief(s) {
     s.voice && `Giọng văn: ${s.voice}`,
     s.avoid && `Không được dùng hoặc hứa hẹn: ${s.avoid}`,
     s.hashtags && `Hashtag luôn có: ${s.hashtags}`,
+    branchList.length > 1 &&
+      `Chuỗi có ${branchList.length} chi nhánh (bài đăng chung cho cả chuỗi; chỉ nhắc chi nhánh cụ thể khi ý chính yêu cầu):\n` +
+        branchList.map((b) => `- ${b.name}${b.address ? `, ${b.address}` : ''}${b.hotline ? `, hotline ${b.hotline}` : ''}`).join('\n'),
   ];
   return lines.filter(Boolean).join('\n');
 }
@@ -190,6 +213,7 @@ const OPTION = {
 
 async function writePost({ brief, tone, format, eventTitle, current }) {
   const s = await require('./settings').all();
+  const branchList = await require('./branches').list();
   const req = [
     `Ý chính của bài: ${brief}`,
     format && `Định dạng: ${format}`,
@@ -214,13 +238,14 @@ async function writePost({ brief, tone, format, eventTitle, current }) {
       },
     },
     system: WRITER_SYSTEM,
-    messages: [{ role: 'user', content: `Thông tin khách sạn:\n${hotelBrief(s)}\n\nViết 3 phương án cho bài sau.\n${req}` }],
+    messages: [{ role: 'user', content: `Thông tin khách sạn:\n${hotelBrief(s, branchList)}\n\nViết 3 phương án cho bài sau.\n${req}` }],
   });
   return (out.options || []).slice(0, 3);
 }
 
 async function ideasForEvent(ev) {
   const s = await require('./settings').all();
+  const branchList = await require('./branches').list();
   const { out } = await callJson({
     max_tokens: 16000,
     output_config: {
@@ -255,7 +280,7 @@ async function ideasForEvent(ev) {
     messages: [
       {
         role: 'user',
-        content: `Thông tin khách sạn:\n${hotelBrief(s)}\n\nSự kiện: ${ev.title} (${ev.occ_start}${ev.occ_end !== ev.occ_start ? ` đến ${ev.occ_end}` : ''}).${
+        content: `Thông tin khách sạn:\n${hotelBrief(s, branchList)}\n\nSự kiện: ${ev.title} (${ev.occ_start}${ev.occ_end !== ev.occ_start ? ` đến ${ev.occ_end}` : ''}).${
           ev.description ? `\nGhi chú của team: ${ev.description}` : ''
         }\n\nĐề xuất 3 bài đăng cho dịp này, mỗi bài một góc khác nhau (ví dụ: báo trước ưu đãi, gợi ý trải nghiệm, nhắc đặt phòng sát ngày).`,
       },

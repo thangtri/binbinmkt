@@ -75,9 +75,10 @@ Sau khi cấu hình, vào **Kênh → chọn kênh → Kết nối**. Số liệ
 1. console.cloud.google.com → tạo project → **APIs & Services → Library** → bật **Places API (New)**. Google yêu cầu gắn tài khoản thanh toán; một lần cập nhật mỗi 12 giờ nằm trong hạn mức miễn phí hằng tháng.
 2. **Credentials → Create credentials → API key**. Nên giới hạn key chỉ dùng cho Places API (New).
 3. Đặt `GOOGLE_PLACES_API_KEY`.
-4. Trong app: Kênh → Google Maps → dán link chia sẻ của khách sạn (Google Maps → Chia sẻ → Sao chép đường liên kết).
+4. Thêm các chi nhánh trong mục **Thông tin khách sạn → Chi nhánh**.
+5. Vào **Kênh → Google Maps**, dán link chia sẻ của từng chi nhánh (Google Maps → Chia sẻ → Sao chép đường liên kết).
 
-Lấy được: điểm đánh giá, số đánh giá, tối đa 5 đánh giá tiêu biểu. Lượt xem hồ sơ và lượt gọi chỉ có qua Google Business Profile Performance API (cần Google duyệt riêng), chưa nằm trong bản này.
+Lấy được cho từng chi nhánh: điểm đánh giá, số đánh giá, tối đa 5 đánh giá tiêu biểu. Trang Google Maps hiện điểm trung bình cả chuỗi (tính theo số đánh giá) và bảng so sánh các chi nhánh; AI so sánh chi nhánh khi phân tích. Facebook, TikTok, Zalo OA dùng chung cho cả chuỗi. Lượt xem hồ sơ và lượt gọi chỉ có qua Google Business Profile Performance API (cần Google duyệt riêng), chưa nằm trong bản này.
 
 ### Facebook Page
 1. developers.facebook.com → **My Apps → Create app**. Ở bước chọn trường hợp sử dụng, chọn mục quản lý Page (hoặc **Other → Business** nếu không có).

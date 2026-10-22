@@ -690,3 +690,34 @@ body.auth {
   max-width: 260px;
   margin-top: 4px;
 }
+
+.branches-panel {
+  max-width: 980px;
+  margin-top: 20px;
+}
+.branch-add {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+/* Link Google Maps theo chi nhánh trong bài */
+.google-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.google-link {
+  display: grid;
+  grid-template-columns: minmax(90px, 140px) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+.google-branch {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.branch-table .inline-form .input-sm {
+  min-width: 220px;
+}

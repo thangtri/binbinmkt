@@ -132,10 +132,25 @@
               <% } else if (st === 'failed') { %><span class="pub pub-fail">Lỗi</span>
               <% } else if (c.published_url) { %><span class="pub pub-done">Đã đăng tay</span>
               <% } else if (auto && Number(post.auto_publish)) { %><span class="pub">Tự đăng lúc <%= post.scheduled_at ? d.hm(post.scheduled_at) : '' %></span>
+              <% } else if (c.channel === 'google' && googleLinks.length > 1) { %><span class="pub">Đăng tay, <%= googleLinks.filter((l) => l.published_url).length %>/<%= googleLinks.length %> chi nhánh</span>
               <% } else { %><span class="pub">Đăng tay</span><% } %>
               <% if (c.publish_error) { %><small class="block <%= st === 'failed' ? 'down' : 'muted' %>"><%= c.publish_error %></small><% } %>
             </td>
-            <% if (editMetrics || (post.status === 'scheduled' && can('post:publish'))) { %>
+            <% if (c.channel === 'google') { const editG = editMetrics || (post.status === 'scheduled' && can('post:publish')); %>
+              <td class="google-links">
+                <% if (!googleLinks.length) { %><span class="muted">Chưa có chi nhánh</span><% } %>
+                <% for (const l of googleLinks) { %>
+                  <div class="google-link">
+                    <span class="google-branch"><%= l.name %></span>
+                    <% if (editG) { %>
+                      <label class="sr-only" for="url-google-<%= l.branch_id %>">Link Google Maps của <%= l.name %></label>
+                      <input id="url-google-<%= l.branch_id %>" class="input-sm" type="url" name="url_google_<%= l.branch_id %>" value="<%= l.published_url || '' %>" placeholder="Dán link bài trên Google Maps">
+                    <% } else if (l.published_url) { %><a href="<%= l.published_url %>" target="_blank" rel="noopener">Mở bài</a>
+                    <% } else { %><span class="muted">Chưa đăng</span><% } %>
+                  </div>
+                <% } %>
+              </td>
+            <% } else if (editMetrics || (post.status === 'scheduled' && can('post:publish'))) { %>
               <td><label class="sr-only" for="url-<%= c.channel %>">Link trên <%= meta.name %></label><input id="url-<%= c.channel %>" class="input-sm" type="url" name="url_<%= c.channel %>" value="<%= c.published_url || '' %>" placeholder="Dán link bài trên <%= meta.name %>"></td>
             <% } else { %>
               <td><% if (c.published_url) { %><a href="<%= c.published_url %>" target="_blank" rel="noopener">Mở bài</a><% } else { %><span class="muted">Chưa có link</span><% } %></td>

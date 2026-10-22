@@ -4,7 +4,7 @@ const dates = require('./dates');
 
 const FIELDS = [
   { key: 'hotel_name', label: 'Tên khách sạn', default: 'Bin Bin Hotel' },
-  { key: 'address', label: 'Địa chỉ', default: '' },
+  { key: 'address', label: 'Địa chỉ chung', default: '', hint: 'Địa chỉ văn phòng hoặc chi nhánh chính; địa chỉ từng chi nhánh khai báo ở mục Chi nhánh' },
   { key: 'hotline', label: 'Hotline đặt phòng', default: '' },
   { key: 'zalo', label: 'Zalo đặt phòng', default: '', hint: 'Số Zalo hoặc link zalo.me' },
   { key: 'booking_url', label: 'Link đặt phòng', default: '', hint: 'Website, Booking, Agoda…' },
