@@ -116,6 +116,15 @@
           <% } %>
         </select>
       </label>
+      <label class="field"><span>Gắn với ưu đãi</span>
+        <select name="offer_id">
+          <option value="">Không gắn</option>
+          <% for (const o of (typeof offerList !== 'undefined' ? offerList : [])) { %>
+            <option value="<%= o.id %>"<%= Number(post.offer_id) === Number(o.id) ? ' selected' : '' %>><%= o.title %> (<%= o.code_prefix %>)</option>
+          <% } %>
+        </select>
+        <small>Viết <code>{{ma}}</code> trong nội dung: khi đăng hoặc sao chép cho từng kênh, hệ thống thay bằng mã của kênh đó.</small>
+      </label>
       <label class="check"><input type="checkbox" name="auto_publish" value="1"<%= Number(post.auto_publish ?? 1) ? ' checked' : '' %>> Tự đăng lên Facebook, TikTok khi đến giờ</label>
       <p class="hint">Chỉ áp dụng cho bài đã duyệt và kênh đã kết nối. Google Maps, Zalo OA vẫn đăng tay.</p>
       <label class="field"><span>Ghi chú cho team</span><textarea name="notes" rows="3" placeholder="Ai quay, cần chuẩn bị gì…"><%= post.notes %></textarea></label>

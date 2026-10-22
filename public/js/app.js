@@ -40,6 +40,13 @@
     });
   });
 
+  // In trang (báo cáo → Lưu PDF)
+  document.querySelectorAll('[data-print]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      window.print();
+    });
+  });
+
   // Sao chép nội dung để dán lên kênh
   document.querySelectorAll('[data-copy]').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -121,6 +128,7 @@
             tone: writer.querySelector('[data-ai-tone]').value,
             format: field('format').value,
             event_id: field('event_id').value,
+            offer_id: field('offer_id') ? field('offer_id').value : '',
             current: caption.value,
           }),
         })

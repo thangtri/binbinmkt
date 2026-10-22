@@ -312,7 +312,9 @@ router.get(
     );
     const snap = await branches.googleSnapshot();
     const users = await db.all(`SELECT id, name FROM users WHERE active = 1 AND role IN ('admin', 'editor') ORDER BY name`);
+    const comparison = await require('../lib/competitors').comparison();
     res.render('channels/google', {
+      comparison,
       title: ch.name,
       ch,
       account,
@@ -358,6 +360,31 @@ router.get(
       chartMetric,
       series,
     });
+  })
+);
+
+router.post(
+  '/google/competitors',
+  requirePerm('channel:edit'),
+  h(async (req, res) => {
+    try {
+      const c = await require('../lib/competitors').add({ branchId: req.body.branch_id, link: str(req.body.link, 500) });
+      await logActivity(req.user, 'competitor.add', 'competitor', c.id, c.name);
+      flash(req, c.sync_status === 'ok' ? 'success' : 'warn', c.sync_status === 'ok' ? `Đã thêm đối thủ ${c.name}.` : `Đã thêm đối thủ nhưng chưa lấy được số liệu: ${c.sync_error}`);
+    } catch (err) {
+      flash(req, 'error', err.message);
+    }
+    res.redirect('/channels/google#doi-thu');
+  })
+);
+
+router.post(
+  '/google/competitors/:id/delete',
+  requirePerm('channel:edit'),
+  h(async (req, res) => {
+    await require('../lib/competitors').remove(req.params.id);
+    flash(req, 'success', 'Đã bỏ theo dõi đối thủ. Số liệu cũ vẫn được giữ.');
+    res.redirect('/channels/google#doi-thu');
   })
 );
 

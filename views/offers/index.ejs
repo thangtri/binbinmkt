@@ -1,0 +1,35 @@
+<%- include('../partials/top') %>
+<header class="page-head">
+  <div><h1>Ưu đãi</h1><p class="sub">Mỗi ưu đãi có mã riêng cho từng kênh để biết kênh nào mang khách về.</p></div>
+  <% if (can('offer:edit')) { %><a class="btn btn-primary" href="/offers/new"><%- icon('plus') %> Thêm ưu đãi</a><% } %>
+</header>
+
+<% if (can('offer:redeem')) { %>
+  <section class="panel">
+    <h2>Ghi nhận khách dùng mã</h2>
+    <p class="hint">Lễ tân nhập mã khách đưa khi nhận phòng. Hệ thống tự biết mã thuộc ưu đãi và kênh nào.</p>
+    <%- include('_redeem', { back: '' }) %>
+  </section>
+<% } %>
+
+<% if (!list.length) { %>
+  <div class="panel empty-state"><p>Chưa có ưu đãi nào.</p><% if (can('offer:edit')) { %><a class="btn btn-primary" href="/offers/new">Tạo ưu đãi đầu tiên</a><% } %></div>
+<% } else { %>
+  <div class="panel panel-flush" style="margin-top: 20px">
+    <table class="table table-rows">
+      <thead><tr><th>Ưu đãi</th><th>Thời gian</th><th>Mã gốc</th><th class="num">Lượt dùng</th><th class="num">Doanh thu</th></tr></thead>
+      <tbody>
+        <% for (const o of list) { const state = !Number(o.active) ? 'Đã tắt' : o.end_date < today ? 'Hết hạn' : o.start_date > today ? 'Sắp diễn ra' : 'Đang chạy'; %>
+          <tr class="<%= state === 'Đang chạy' || state === 'Sắp diễn ra' ? '' : 'is-muted' %>">
+            <td><a class="row-title" href="/offers/<%= o.id %>"><%= o.title %></a><small class="muted block"><%= state %><%= o.summary ? ', ' + o.summary : '' %></small></td>
+            <td class="nowrap"><%= d.dm(o.start_date) %> – <%= d.dmy(o.end_date) %></td>
+            <td><code><%= o.code_prefix %></code></td>
+            <td class="num"><%= num(o.used) %></td>
+            <td class="num"><%= Number(o.revenue) ? num(o.revenue) + 'đ' : '—' %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+<%- include('../partials/bottom') %>

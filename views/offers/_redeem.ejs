@@ -1,0 +1,14 @@
+<%# Form ghi nhận khách dùng mã. Dùng: include('_redeem', { back }) %>
+<form method="post" action="/offers/redeem" class="grid-form redeem-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <% if (typeof back !== 'undefined' && back) { %><input type="hidden" name="back" value="<%= back %>"><% } %>
+  <label class="field"><span>Mã khách đưa</span><input type="text" name="code" required autocapitalize="characters" spellcheck="false" placeholder="COMBO15FB"></label>
+  <label class="field"><span>Chi nhánh</span>
+    <select name="branch_id"><% for (const b of branchList) { %><option value="<%= b.id %>"><%= b.name %></option><% } %></select>
+  </label>
+  <label class="field"><span>Ngày dùng</span><input type="date" name="used_on" value="<%= today %>"></label>
+  <label class="field"><span>Tên khách</span><input type="text" name="guest"></label>
+  <label class="field"><span>Số đêm</span><input type="number" min="0" name="nights"></label>
+  <label class="field"><span>Doanh thu (đồng)</span><input type="number" min="0" step="1000" name="amount" placeholder="1500000"></label>
+  <div class="field-wide"><button class="btn btn-primary" type="submit"><%- icon('check') %> Ghi nhận</button></div>
+</form>

@@ -315,6 +315,77 @@ const migrations = [
       },
     ];
   },
+  // Ưu đãi và mã giảm giá theo kênh, đối thủ trên Google Maps, kế hoạch nội dung do AI lập
+  function offersCompetitorsPlans({ id, longtext, tail }) {
+    return [
+      `CREATE TABLE offers (
+        id ${id},
+        title VARCHAR(200) NOT NULL,
+        summary VARCHAR(300) NULL,
+        details TEXT NULL,
+        terms TEXT NULL,
+        branch_ids VARCHAR(255) NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        code_prefix VARCHAR(20) NOT NULL,
+        active INT NOT NULL DEFAULT 1,
+        created_by INT NULL,
+        created_at DATETIME NOT NULL
+      )${tail}`,
+      `CREATE TABLE offer_codes (
+        id ${id},
+        offer_id INT NOT NULL,
+        channel VARCHAR(20) NOT NULL,
+        code VARCHAR(40) NOT NULL UNIQUE
+      )${tail}`,
+      `CREATE TABLE offer_redemptions (
+        id ${id},
+        offer_id INT NOT NULL,
+        code_id INT NULL,
+        channel VARCHAR(20) NULL,
+        branch_id INT NULL,
+        used_on DATE NOT NULL,
+        guest VARCHAR(150) NULL,
+        nights INT NULL,
+        amount INT NULL,
+        note VARCHAR(255) NULL,
+        created_by INT NULL,
+        created_at DATETIME NOT NULL
+      )${tail}`,
+      'CREATE INDEX idx_redemptions_offer ON offer_redemptions (offer_id, used_on)',
+      'ALTER TABLE posts ADD COLUMN offer_id INT NULL',
+      `CREATE TABLE competitors (
+        id ${id},
+        branch_id INT NULL,
+        name VARCHAR(150) NOT NULL,
+        maps_url VARCHAR(500) NULL,
+        place_id VARCHAR(200) NULL,
+        sync_status VARCHAR(20) NULL,
+        sync_error VARCHAR(500) NULL,
+        last_synced_at DATETIME NULL,
+        extra ${longtext} NULL,
+        active INT NOT NULL DEFAULT 1,
+        created_at DATETIME NOT NULL
+      )${tail}`,
+      `CREATE TABLE competitor_stats (
+        id ${id},
+        competitor_id INT NOT NULL,
+        recorded_on DATE NOT NULL,
+        rating DECIMAL(3,2) NULL,
+        reviews INT NULL,
+        created_at DATETIME NOT NULL
+      )${tail}`,
+      'CREATE INDEX idx_competitor_stats ON competitor_stats (competitor_id, recorded_on)',
+      `CREATE TABLE ai_plans (
+        id ${id},
+        month VARCHAR(7) NOT NULL,
+        brief TEXT NULL,
+        items ${longtext} NOT NULL,
+        created_by INT NULL,
+        created_at DATETIME NOT NULL
+      )${tail}`,
+    ];
+  },
 ];
 
 async function migrate() {

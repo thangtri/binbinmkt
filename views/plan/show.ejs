@@ -1,0 +1,38 @@
+<%- include('../partials/top') %>
+<%
+  const evName = Object.fromEntries((p.plan.events || []).map((e) => [e.id, e.title]));
+  const ofName = Object.fromEntries((p.plan.offers || []).map((o) => [o.id, o.title]));
+%>
+<header class="page-head">
+  <div>
+    <p class="crumbs"><a href="/plan">Kế hoạch tháng bằng AI</a></p>
+    <h1>Kế hoạch tháng <%= p.month %></h1>
+    <p class="sub"><%= p.plan.items.length %> bài đề xuất. Bỏ chọn bài không dùng, sửa ngày giờ nếu cần, rồi tạo bài nháp.</p>
+  </div>
+</header>
+<% if (p.plan.overview) { %><section class="panel ai-panel"><p class="ai-summary"><%= p.plan.overview %></p></section><% } %>
+
+<form method="post" action="/plan/<%= p.id %>/create" class="plan-form">
+  <input type="hidden" name="_csrf" value="<%= csrf %>">
+  <ol class="plan-list">
+    <% p.plan.items.forEach((it, i) => { %>
+      <li class="panel plan-item">
+        <label class="check plan-pick"><input type="checkbox" name="pick_<%= i %>" value="1" checked> <strong><%= it.title %></strong></label>
+        <div class="plan-meta">
+          <input type="date" name="date_<%= i %>" value="<%= it.date %>" aria-label="Ngày đăng">
+          <input type="time" name="time_<%= i %>" value="<%= it.time %>" aria-label="Giờ đăng">
+          <span class="tag"><%= it.format %></span>
+          <% if (it.event_id && evName[it.event_id]) { %><span class="tag">Sự kiện: <%= evName[it.event_id] %></span><% } %>
+          <% if (it.offer_id && ofName[it.offer_id]) { %><span class="tag">Ưu đãi: <%= ofName[it.offer_id] %></span><% } %>
+        </div>
+        <p class="muted small"><%= it.why %></p>
+        <details><summary>Xem nội dung AI viết</summary><p class="caption"><%= it.caption %></p><p class="tags"><%= it.hashtags %></p></details>
+      </li>
+    <% }) %>
+  </ol>
+  <div class="toolbar plan-actions">
+    <button class="btn btn-primary" type="submit"><%- icon('plus') %> Tạo bài nháp cho các bài đã chọn</button>
+    <span class="hint">Bài nháp được đặt lên lịch, gắn sẵn sự kiện và ưu đãi; vẫn cần thêm ảnh và gửi duyệt.</span>
+  </div>
+</form>
+<%- include('../partials/bottom') %>

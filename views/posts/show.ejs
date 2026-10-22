@@ -36,7 +36,11 @@
   <section class="panel post-preview">
     <div class="panel-head">
       <h2>Nội dung</h2>
-      <% if (fullText) { %><button class="btn btn-small" type="button" data-copy="<%= fullText %>">Sao chép để đăng</button><% } %>
+      <% if (fullText && offer && /\{\{\s*ma\s*\}\}/i.test(fullText)) { %>
+        <span class="copy-group">
+          <% for (const c of offer.codes.filter((c) => C.CHANNELS[c.channel])) { %><button class="btn btn-small" type="button" data-copy="<%= fullText.replace(/\{\{\s*ma\s*\}\}/gi, c.code) %>">Sao chép cho <%= C.CHANNELS[c.channel].name %></button><% } %>
+        </span>
+      <% } else if (fullText) { %><button class="btn btn-small" type="button" data-copy="<%= fullText %>">Sao chép để đăng</button><% } %>
     </div>
     <% if (mediaList.length) { %>
       <div class="gallery<%= mediaList.length === 1 ? ' gallery-one' : '' %>">
@@ -52,6 +56,7 @@
     <% if (post.caption) { %><div class="caption"><%= post.caption %></div><% } else { %><p class="empty">Chưa có nội dung.</p><% } %>
     <% if (post.hashtags) { %><p class="tags"><%= post.hashtags %></p><% } %>
     <p class="muted small"><%= post.caption ? post.caption.length.toLocaleString('vi-VN') : 0 %> ký tự<%= post.caption && post.caption.length > C.GOOGLE_LIMIT ? '. Google Maps chỉ nhận ' + C.GOOGLE_LIMIT.toLocaleString('vi-VN') + ' ký tự, nhớ rút gọn khi đăng lên Google.' : '' %></p>
+    <% if (offer) { %><div class="note"><strong>Ưu đãi:</strong> <a href="/offers/<%= offer.id %>"><%= offer.title %></a>, mã gốc <code><%= offer.code_prefix %></code></div><% } %>
     <% if (post.notes) { %><div class="note"><strong>Ghi chú cho team:</strong> <%= post.notes %></div><% } %>
   </section>
 

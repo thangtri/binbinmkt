@@ -28,7 +28,8 @@ async function callJson(params) {
   }
   let response;
   try {
-    response = await getClient().beta.messages.create(req);
+    // Dùng streaming để yêu cầu dài (như kế hoạch cả tháng) không bị giới hạn thời gian của HTTP
+    response = await getClient().beta.messages.stream(req).finalMessage();
   } catch (err) {
     if (err instanceof Anthropic.AuthenticationError) throw new Error('ANTHROPIC_API_KEY không hợp lệ.');
     if (err instanceof Anthropic.RateLimitError) throw new Error('Claude đang quá tải hoặc hết hạn mức, thử lại sau ít phút.');
@@ -63,7 +64,7 @@ Cách viết:
 - Đề xuất phải làm được ngay: loại nội dung, giờ đăng, chủ đề gắn với sự kiện sắp tới, cách trả lời đánh giá.
 - Nếu dữ liệu còn quá ít để kết luận, nói rõ điều đó trong phần tổng quan và đề xuất cách thu thêm dữ liệu.
 - Với đánh giá Google, nêu khách khen gì và phàn nàn gì nếu có nội dung đánh giá.
-- Google Maps có nhiều chi nhánh (trường chi_nhanh): so sánh điểm, số đánh giá và nội dung đánh giá giữa các chi nhánh, chỉ rõ chi nhánh nào cần cải thiện và vì sao; nêu tên chi nhánh khi đề xuất.`;
+- Google Maps có nhiều chi nhánh (trường chi_nhanh): so sánh điểm, số đánh giá và nội dung đánh giá giữa các chi nhánh, chỉ rõ chi nhánh nào cần cải thiện và vì sao; nêu tên chi nhánh khi đề xuất. Nếu có doi_thu_google, so sánh từng chi nhánh với đối thủ gần đó (điểm, số đánh giá, tốc độ có đánh giá mới).`;
 
 async function gather(channel) {
   const account = await db.get('SELECT * FROM channel_accounts WHERE channel = ?', [channel]);
@@ -107,9 +108,14 @@ async function gather(channel) {
       });
     }
   }
+  const doiThu = channel === 'google' ? (await require('./competitors').comparison()).map((g) => ({
+    chi_nhanh: g.branch.name,
+    doi_thu: g.rivals.map((r) => ({ ten: r.name, diem: r.latest?.rating ?? null, so_danh_gia: r.latest?.reviews ?? null, danh_gia_moi_30_ngay: r.growth30 })),
+  })).filter((g) => g.doi_thu.length) : [];
   return {
     kenh: CHANNELS[channel].name,
     chi_nhanh: chiNhanh,
+    doi_thu_google: doiThu,
     hom_nay: dates.today(),
     so_lieu_theo_ngay: stats.reverse(),
     bai_da_dang_45_ngay: posts,
@@ -173,6 +179,23 @@ async function latest(channel) {
 
 /* ---------- Viết bài và gợi ý ý tưởng ---------- */
 
+// Thông tin ưu đãi cho AI; mã giảm giá được viết là {{ma}} để hệ thống thay theo từng kênh
+async function offerBrief(offerId) {
+  if (!offerId) return null;
+  const o = await require('./offers').get(offerId);
+  if (!o) return null;
+  return [
+    `Bài quảng bá ưu đãi: ${o.title}`,
+    o.summary && `Tóm tắt: ${o.summary}`,
+    o.details && `Chi tiết (dùng đúng các con số này, không thêm bớt): ${o.details}`,
+    o.terms && `Điều kiện: ${o.terms}`,
+    `Thời gian áp dụng: ${dates.dmy(o.start_date)} đến ${dates.dmy(o.end_date)}`,
+    'Ghi mã giảm giá trong bài đúng nguyên văn là {{ma}} (hệ thống sẽ thay bằng mã của từng kênh). Ví dụ: "Nhập mã {{ma}} khi đặt phòng".',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
 function hotelBrief(s, branchList = []) {
   const lines = [
     `Tên: ${s.hotel_name}`,
@@ -211,7 +234,7 @@ const OPTION = {
   additionalProperties: false,
 };
 
-async function writePost({ brief, tone, format, eventTitle, current }) {
+async function writePost({ brief, tone, format, eventTitle, current, offerId }) {
   const s = await require('./settings').all();
   const branchList = await require('./branches').list();
   const req = [
@@ -220,6 +243,7 @@ async function writePost({ brief, tone, format, eventTitle, current }) {
     tone && `Sắc thái mong muốn: ${tone}`,
     eventTitle && `Bài gắn với sự kiện: ${eventTitle}`,
     current && `Bản nháp hiện tại (có thể dựa vào, viết lại cho hay hơn):\n${current}`,
+    await offerBrief(offerId),
   ]
     .filter(Boolean)
     .join('\n');
@@ -289,4 +313,97 @@ async function ideasForEvent(ev) {
   return (out.ideas || []).slice(0, 3);
 }
 
-module.exports = { isConfigured, analyze, latest, writePost, ideasForEvent };
+/* ---------- Kế hoạch nội dung cả tháng ---------- */
+
+async function planMonth({ month, perWeek, focus }) {
+  const s = await require('./settings').all();
+  const branchList = await require('./branches').list();
+  const { occurrences } = require('./events');
+  const from = `${month}-01`;
+  const lastDay = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate();
+  const to = `${month}-${String(lastDay).padStart(2, '0')}`;
+  const events = (await occurrences(from, to)).map((e) => ({ id: e.id, title: e.title, from: e.occ_start, to: e.occ_end }));
+  const offerList = (await require('./offers').active(from)).filter((o) => o.start_date <= to).map((o) => ({ id: o.id, title: o.title, summary: o.summary, from: o.start_date, to: o.end_date }));
+  const existing = await db.all(`SELECT title, scheduled_at FROM posts WHERE scheduled_at BETWEEN ? AND ? ORDER BY scheduled_at`, [from + ' 00:00:00', to + ' 23:59:59']);
+  const best = await db.all(
+    `SELECT title, format, views, likes, comments, shares FROM posts WHERE status = 'published' AND published_at >= ?
+     ORDER BY (likes + comments + shares) DESC LIMIT 8`,
+    [dates.addDays(dates.today(), -90) + ' 00:00:00']
+  );
+  const count = Math.max(4, Math.min(40, Math.round((Number(perWeek) || 3) * 4.3)));
+  const { out } = await callJson({
+    max_tokens: 32000,
+    output_config: {
+      effort: 'medium',
+      format: {
+        type: 'json_schema',
+        schema: {
+          type: 'object',
+          properties: {
+            overview: { type: 'string', description: '2-3 câu: chủ đề chính của tháng và cách phân bổ bài' },
+            items: {
+              type: 'array',
+              description: `Khoảng ${count} bài, rải đều trong tháng, không trùng ngày với bài đã có nếu được`,
+              items: {
+                type: 'object',
+                properties: {
+                  date: { type: 'string', description: `Ngày đăng YYYY-MM-DD, trong khoảng ${from} đến ${to}` },
+                  time: { type: 'string', description: 'Giờ đăng HH:MM' },
+                  ...OPTION.properties,
+                  format: { type: 'string', enum: require('./constants').POST_FORMATS },
+                  event_id: { type: 'integer', description: 'id sự kiện liên quan, 0 nếu không có' },
+                  offer_id: { type: 'integer', description: 'id ưu đãi bài này quảng bá, 0 nếu không có' },
+                  why: { type: 'string', description: 'Một câu: mục đích của bài' },
+                },
+                required: ['date', 'time', 'title', 'caption', 'hashtags', 'format', 'event_id', 'offer_id', 'why'],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ['overview', 'items'],
+          additionalProperties: false,
+        },
+      },
+    },
+    system: `${WRITER_SYSTEM}
+- Khi lập kế hoạch cả tháng: xen kẽ nhiều loại bài (giới thiệu phòng, trải nghiệm quanh khách sạn, hậu trường, ưu đãi, đánh giá của khách), bám theo sự kiện và ưu đãi trong tháng, ưu tiên kiểu bài từng hiệu quả.
+- Bài gắn ưu đãi phải ghi mã là {{ma}} và dùng đúng thông tin ưu đãi được cung cấp.`,
+    messages: [
+      {
+        role: 'user',
+        content: `Thông tin khách sạn:\n${hotelBrief(s, branchList)}\n\nLập kế hoạch đăng bài tháng ${month} (khoảng ${perWeek} bài mỗi tuần).${
+          focus ? `\nTrọng tâm tháng này: ${focus}` : ''
+        }\n\nDữ liệu (JSON):\n${JSON.stringify({ su_kien: events, uu_dai: offerList, bai_da_len_lich: existing, bai_hieu_qua_90_ngay: best }, null, 1)}`,
+      },
+    ],
+  });
+  const validEvent = new Set(events.map((e) => e.id));
+  const validOffer = new Set(offerList.map((o) => o.id));
+  const items = (out.items || [])
+    .filter((it) => dates.isDate(it.date) && it.date >= from && it.date <= to)
+    .map((it) => ({
+      ...it,
+      time: /^\d{2}:\d{2}$/.test(it.time) ? it.time : '09:00',
+      event_id: validEvent.has(it.event_id) ? it.event_id : null,
+      offer_id: validOffer.has(it.offer_id) ? it.offer_id : null,
+    }))
+    .sort((a, b) => (a.date + a.time < b.date + b.time ? -1 : 1));
+  return { overview: out.overview, items, events, offers: offerList };
+}
+
+// Nhận xét báo cáo tháng; lưu như một bản phân tích với channel = "report-YYYY-MM"
+async function commentReport(report, user = null) {
+  const { out, model } = await callJson({
+    max_tokens: 16000,
+    output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
+    system: `${SYSTEM}
+- Đây là báo cáo tổng hợp một tháng cho ban giám đốc: nêu kết quả chính, kênh và chi nhánh nổi bật, ưu đãi nào mang khách về (theo lượt dùng mã và doanh thu), và đề xuất cho tháng sau.`,
+    messages: [{ role: 'user', content: `Nhận xét báo cáo marketing tháng ${report.month} của Bin Bin Hotel (JSON):\n\n${JSON.stringify(report, null, 1)}` }],
+  });
+  await db.run(
+    `INSERT INTO channel_insights (channel, summary, highlights, concerns, recommendations, model, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [`report-${report.month}`, out.summary, JSON.stringify(out.highlights || []), JSON.stringify(out.concerns || []), JSON.stringify(out.recommendations || []), model, user?.id || null, dates.now()]
+  );
+}
+
+module.exports = { isConfigured, analyze, latest, writePost, ideasForEvent, planMonth, commentReport };

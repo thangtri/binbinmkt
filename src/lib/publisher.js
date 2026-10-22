@@ -28,8 +28,10 @@ function verifyMedia(id, exp, sig) {
   return want.length === got.length && crypto.timingSafeEqual(want, got);
 }
 
-function message(post) {
-  return [post.caption, post.hashtags].filter((s) => s && String(s).trim()).join('\n\n');
+async function message(post, channel) {
+  const text = [post.caption, post.hashtags].filter((s) => s && String(s).trim()).join('\n\n');
+  const offers = require('./offers');
+  return offers.applyCode(text, await offers.codeFor(post.offer_id, channel));
 }
 
 async function files(postId) {
@@ -77,7 +79,7 @@ async function publishChannel(post, channel) {
   if (!claim.changes) return { skipped: true };
 
   try {
-    const out = await conn.publish(account, token, { message: message(post), files: await files(post.id) });
+    const out = await conn.publish(account, token, { message: await message(post, channel), files: await files(post.id) });
     if (out.pending) {
       await setState(post.id, channel, { publish_status: `processing:${out.kind}`, external_id: out.externalId });
     } else {

@@ -15,6 +15,10 @@
 | **AI viết bài** | Nhập ý chính, AI viết 3 phương án nội dung kèm hashtag; gợi ý 3 bài cho mỗi sự kiện sắp tới và tạo bài nháp từ ý tưởng. Dựa trên mục Thông tin khách sạn. |
 | **Tự đăng bài** | Bài đã duyệt tự đăng lên Facebook và TikTok khi đến giờ (kênh đã kết nối); Google Maps, Zalo OA đăng tay. |
 | **Chi nhánh** | Quản lý nhiều chi nhánh (tên, địa chỉ, hotline, Zalo). Mỗi chi nhánh theo dõi Google Maps riêng; Facebook, TikTok, Zalo OA và bài đăng dùng chung cả chuỗi. Bài đăng có ô link Google Maps cho từng chi nhánh. |
+| **Ưu đãi** | Tạo ưu đãi kèm mã riêng cho từng kênh (COMBO15FB, COMBO15TT, …); lễ tân ghi nhận khách dùng mã, số đêm, doanh thu; xem kênh và chi nhánh nào mang khách về. Trong bài viết {{ma}}, khi đăng hoặc sao chép cho từng kênh hệ thống tự thay bằng mã của kênh đó. |
+| **Kế hoạch tháng bằng AI** | AI đề xuất lịch đăng cả tháng theo sự kiện, ưu đãi và bài hiệu quả trước đây; chọn bài cần dùng để tạo bài nháp hàng loạt. |
+| **Báo cáo** | Báo cáo marketing theo tháng: kênh, Google từng chi nhánh, đối thủ, bài hiệu quả nhất, ưu đãi, email; AI nhận xét; tải Excel (.csv) hoặc in, lưu PDF. |
+| **Đối thủ** | Theo dõi điểm và số đánh giá Google Maps của khách sạn đối thủ gần từng chi nhánh, so sánh trực tiếp với chi nhánh. |
 | **Tài khoản** | 3 vai trò: Quản trị, Biên tập, Chỉ xem. Quản trị viên tạo tài khoản, đổi vai trò, khoá tài khoản, đặt lại mật khẩu. Người dùng tự lấy lại mật khẩu qua email. |
 
 Facebook và TikTok tự đăng; Google Maps và Zalo OA team đăng tay. App lo lịch, duyệt nội dung, lấy số liệu và phân tích. Cách lấy khoá API cho từng kênh xem trong [DEPLOY.md](DEPLOY.md), mục 5.

@@ -47,6 +47,10 @@ function canDelete(user, post) {
   return can(user, 'post:edit') && post.author_id === user.id && post.status !== 'published';
 }
 
+async function offerOptions() {
+  return require('../lib/offers').active(dates.addDays(dates.today(), -30));
+}
+
 async function eventOptions() {
   const today = dates.today();
   return db.all(
@@ -68,6 +72,7 @@ function readForm(body) {
     event_id: int(body.event_id) || null,
     notes: str(body.notes, 5000),
     auto_publish: body.auto_publish ? 1 : 0,
+    offer_id: int(body.offer_id) || null,
   };
 }
 
@@ -126,8 +131,9 @@ router.get(
       notes: '',
       status: 'draft',
       auto_publish: 1,
+      offer_id: int(req.query.offer) || null,
     };
-    res.render('posts/form', { title: 'Soạn bài mới', post, events: await eventOptions(), aiReady: ai.isConfigured(), error: null });
+    res.render('posts/form', { title: 'Soạn bài mới', post, events: await eventOptions(), offerList: await offerOptions(), aiReady: ai.isConfigured(), error: null });
   })
 );
 
@@ -146,6 +152,7 @@ router.post(
         format: str(req.body.format, 40),
         eventTitle: ev?.title,
         current: str(req.body.current, 3000),
+        offerId: int(req.body.offer_id) || null,
       });
       await logActivity(req.user, 'post.ai', 'post', null, brief.slice(0, 120));
       res.json({ options });
@@ -202,13 +209,13 @@ router.post(
     const error = validate(p, intent);
     if (error) {
       for (const f of req.files || []) upload.remove(upload.relPath(f));
-      return res.status(400).render('posts/form', { title: 'Soạn bài mới', post: { ...p, status: 'draft' }, events: await eventOptions(), error });
+      return res.status(400).render('posts/form', { title: 'Soạn bài mới', post: { ...p, status: 'draft' }, events: await eventOptions(), offerList: await offerOptions(), error });
     }
     const now = dates.now();
     const r = await db.run(
-      `INSERT INTO posts (title, channel, format, caption, hashtags, media_path, scheduled_at, status, event_id, author_id, notes, auto_publish, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)`,
-      [p.title, 'all', p.format, p.caption, p.hashtags, null, p.scheduled_at, p.event_id, req.user.id, p.notes, p.auto_publish, now, now]
+      `INSERT INTO posts (title, channel, format, caption, hashtags, media_path, scheduled_at, status, event_id, author_id, notes, auto_publish, offer_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?)`,
+      [p.title, 'all', p.format, p.caption, p.hashtags, null, p.scheduled_at, p.event_id, req.user.id, p.notes, p.auto_publish, p.offer_id, now, now]
     );
     await afterSave(req, r.insertId, intent, 'draft');
     await postChannels.ensure(r.insertId);
@@ -228,6 +235,7 @@ router.get(
       post,
       channels: await postChannels.list(post.id),
       googleLinks: await postChannels.googleLinks(post.id),
+      offer: post.offer_id ? await require('../lib/offers').get(post.offer_id) : null,
       mediaList: await media.list(post.id),
       autoChannels: publisher.AUTO,
       canEdit: canEdit(req.user, post),
@@ -241,7 +249,7 @@ router.get(
   h(async (req, res) => {
     const post = await load(req.params.id);
     if (!canEdit(req.user, post)) return requirePerm('__never__')(req, res);
-    res.render('posts/form', { title: 'Sửa bài', post, mediaList: await media.list(post.id), events: await eventOptions(), aiReady: ai.isConfigured(), error: null });
+    res.render('posts/form', { title: 'Sửa bài', post, mediaList: await media.list(post.id), events: await eventOptions(), offerList: await offerOptions(), aiReady: ai.isConfigured(), error: null });
   })
 );
 
@@ -256,15 +264,15 @@ router.post(
     const error = validate(p, intent);
     if (error) {
       for (const f of req.files || []) upload.remove(upload.relPath(f));
-      return res.status(400).render('posts/form', { title: 'Sửa bài', post: { ...post, ...p }, mediaList: await media.list(post.id), events: await eventOptions(), error });
+      return res.status(400).render('posts/form', { title: 'Sửa bài', post: { ...post, ...p }, mediaList: await media.list(post.id), events: await eventOptions(), offerList: await offerOptions(), error });
     }
     // Biên tập viên sửa bài đã duyệt → bài cần được duyệt lại
     let status = post.status;
     if (req.user.role !== 'admin' && status === 'scheduled') status = 'pending';
     await db.run(
-      `UPDATE posts SET title = ?, format = ?, caption = ?, hashtags = ?, scheduled_at = ?, auto_publish = ?,
+      `UPDATE posts SET title = ?, format = ?, caption = ?, hashtags = ?, scheduled_at = ?, auto_publish = ?, offer_id = ?,
        event_id = ?, notes = ?, status = ?, updated_at = ? WHERE id = ?`,
-      [p.title, p.format, p.caption, p.hashtags, p.scheduled_at, p.auto_publish, p.event_id, p.notes, status, dates.now(), post.id]
+      [p.title, p.format, p.caption, p.hashtags, p.scheduled_at, p.auto_publish, p.offer_id, p.event_id, p.notes, status, dates.now(), post.id]
     );
     await media.applyForm(post.id, req.body);
     await media.add(post.id, req.files);

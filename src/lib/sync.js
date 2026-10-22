@@ -129,6 +129,8 @@ async function syncGoogle(user = null) {
       }
     }
   }
+  // Đối thủ trên Google Maps cập nhật cùng lúc với các chi nhánh
+  if (conn.isConfigured()) await require('./competitors').syncAll();
   await db.run(`UPDATE channel_accounts SET sync_status = ?, sync_error = ?, last_synced_at = ? WHERE channel = 'google'`, [
     errors.length ? (ok ? 'warn' : 'error') : 'ok',
     errors.join('; ').slice(0, 500) || null,

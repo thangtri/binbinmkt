@@ -131,6 +131,12 @@ Mỗi lần phân tích một kênh tốn khoảng 1.000–5.000 đồng tiền 
 ### Quên mật khẩu
 Trang đăng nhập có link "Quên mật khẩu?". Email đặt lại gửi qua Brevo, nên cần cấu hình Brevo (mục 4) thì người dùng mới nhận được email. Khi chưa có Brevo, link đặt lại chỉ được ghi vào log máy chủ.
 
+### Ưu đãi, kế hoạch tháng, báo cáo, đối thủ
+- **Ưu đãi**: mục Ưu đãi. Mã gốc như COMBO15 sinh ra mã cho từng kênh. Biên tập viên ghi nhận khách dùng mã (lễ tân cần tài khoản vai trò Biên tập).
+- **Kế hoạch tháng bằng AI**: trong Lịch đăng bài, bấm "Kế hoạch tháng bằng AI". Cần `ANTHROPIC_API_KEY`. Mỗi lần lập tốn khoảng 5.000–20.000 đồng tiền API tuỳ số bài.
+- **Báo cáo**: mục Báo cáo. Nút "In / Lưu PDF" dùng chức năng in của trình duyệt (chọn "Lưu dưới dạng PDF").
+- **Đối thủ**: Kênh → Google Maps → So sánh với đối thủ, dán link Google Maps của khách sạn đối thủ. Cập nhật cùng lúc với các chi nhánh, mỗi đối thủ tính thêm một lượt gọi Google Places API.
+
 ### Thông tin khách sạn cho AI
 Quản trị viên vào mục **Thông tin khách sạn** điền địa chỉ, hotline, Zalo, link đặt phòng, điểm mạnh, giọng văn. AI dùng phần này khi viết bài ("Nhờ AI viết bài" trong trang soạn bài) và khi gợi ý bài cho sự kiện ("Gợi ý bài bằng AI" trong trang Sự kiện).
 

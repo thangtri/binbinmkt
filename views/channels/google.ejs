@@ -89,6 +89,57 @@
   <% } %>
 </section>
 
+<section class="panel panel-flush" id="doi-thu">
+  <div class="panel-head pad">
+    <h2>So sánh với đối thủ</h2>
+    <span class="muted small">Điểm và số đánh giá cập nhật cùng lúc với chi nhánh</span>
+  </div>
+  <% const fmtRating = (t) => (t.latest && t.latest.rating != null ? Number(t.latest.rating).toFixed(1) + '★' : '—'); %>
+  <% const fmtReviews = (t) => (t.latest && t.latest.reviews != null ? num(t.latest.reviews) : '—'); %>
+  <% const fmtGrowth = (t) => (t.growth30 == null ? '—' : (t.growth30 > 0 ? '+' : '') + num(t.growth30)); %>
+  <table class="table table-rows rival-table">
+    <thead><tr><th>Khách sạn</th><th class="num">Điểm</th><th class="num">Đánh giá</th><th class="num">Đánh giá mới 30 ngày</th><th><span class="sr-only">Bỏ</span></th></tr></thead>
+    <% for (const g of comparison) { %>
+      <tbody>
+        <tr class="rival-own">
+          <td><strong><%= g.branch.name %></strong> <span class="tag">Bin Bin</span></td>
+          <td class="num"><strong><%= fmtRating(g.own) %></strong></td>
+          <td class="num"><%= fmtReviews(g.own) %></td>
+          <td class="num"><%= fmtGrowth(g.own) %></td>
+          <td></td>
+        </tr>
+        <% for (const r of g.rivals) {
+             const ownR = g.own.latest && g.own.latest.rating != null ? Number(g.own.latest.rating) : null;
+             const rivalR = r.latest && r.latest.rating != null ? Number(r.latest.rating) : null;
+             const ahead = ownR != null && rivalR != null && rivalR > ownR; %>
+          <tr>
+            <td class="rival-name"><% if (r.maps_url) { %><a href="<%= r.maps_url %>" target="_blank" rel="noopener"><%= r.name %></a><% } else { %><%= r.name %><% } %>
+              <% if (r.sync_status === 'error') { %><small class="block down"><%= r.sync_error %></small><% } %></td>
+            <td class="num<%= ahead ? ' down' : '' %>"><%= fmtRating(r) %></td>
+            <td class="num"><%= fmtReviews(r) %></td>
+            <td class="num"><%= fmtGrowth(r) %></td>
+            <td class="right">
+              <% if (editable) { %><form method="post" action="/channels/google/competitors/<%= r.id %>/delete" data-confirm="Bỏ theo dõi <%= r.name %>?"><input type="hidden" name="_csrf" value="<%= csrf %>"><button class="btn btn-small btn-quiet" type="submit">Bỏ</button></form><% } %>
+            </td>
+          </tr>
+        <% } %>
+        <% if (!g.rivals.length) { %><tr><td colspan="5" class="muted small rival-name">Chưa có đối thủ nào cho chi nhánh này.</td></tr><% } %>
+      </tbody>
+    <% } %>
+  </table>
+  <% if (editable && conn.configured && snap.length) { %>
+    <form method="post" action="/channels/google/competitors" class="inline-form pad rival-add">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label class="sr-only" for="rival-branch">So với chi nhánh</label>
+      <select id="rival-branch" name="branch_id"><% for (const b of snap) { %><option value="<%= b.id %>"><%= b.name %></option><% } %></select>
+      <label class="sr-only" for="rival-link">Link Google Maps của đối thủ</label>
+      <input id="rival-link" class="input-sm" type="url" name="link" required placeholder="Dán link Google Maps của khách sạn đối thủ">
+      <button class="btn btn-small" type="submit" data-busy="Đang lấy…"><%- icon('plus') %> Thêm đối thủ</button>
+    </form>
+  <% } %>
+  <p class="hint pad">Số đỏ là đối thủ đang có điểm cao hơn chi nhánh. Nên theo dõi 2–4 khách sạn cùng phân khúc gần mỗi chi nhánh.</p>
+</section>
+
 <div class="detail">
   <section class="panel ai-panel" id="ai">
     <div class="panel-head">

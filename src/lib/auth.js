@@ -64,6 +64,8 @@ const PERMISSIONS = {
     'channel:edit',
     'contact:edit',
     'campaign:edit',
+    'offer:edit',
+    'offer:redeem',
   ]),
   viewer: new Set(),
 };

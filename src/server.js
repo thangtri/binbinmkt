@@ -121,6 +121,9 @@ async function main() {
   app.use('/email', require('./routes/email'));
   app.use('/users', require('./routes/users'));
   app.use('/settings', require('./routes/settings'));
+  app.use('/offers', require('./routes/offers'));
+  app.use('/plan', require('./routes/plan'));
+  app.use('/reports', require('./routes/reports'));
 
   app.use((req, res) => {
     res.status(404).render('error', { title: 'Không tìm thấy', message: 'Trang bạn tìm không tồn tại hoặc đã bị xoá.' });

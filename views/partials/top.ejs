@@ -7,6 +7,8 @@
     { href: '/events', label: 'Sự kiện', icon: 'flag', match: (p) => p.startsWith('/events') },
     { href: '/channels', label: 'Kênh', icon: 'share', match: (p) => p.startsWith('/channels') },
     { href: '/email/campaigns', label: 'Email marketing', icon: 'mail', match: (p) => p.startsWith('/email') },
+    { href: '/offers', label: 'Ưu đãi', icon: 'tag', match: (p) => p.startsWith('/offers') },
+    { href: '/reports', label: 'Báo cáo', icon: 'chart', match: (p) => p.startsWith('/reports') },
   ];
   if (user && user.role === 'admin') nav.push({ href: '/users', label: 'Tài khoản', icon: 'users', match: (p) => p.startsWith('/users') });
   if (user && user.role === 'admin') nav.push({ href: '/settings', label: 'Thông tin khách sạn', icon: 'key', match: (p) => p.startsWith('/settings') });

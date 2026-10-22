@@ -11,6 +11,7 @@
     </p>
   </div>
   <div class="toolbar">
+    <% if (can('post:create')) { %><a class="btn" href="/plan"><%- icon('spark') %> Kế hoạch tháng bằng AI</a><% } %>
     <div class="seg" role="group" aria-label="Kiểu xem">
       <a href="/calendar?view=board" class="<%= view === 'board' ? 'is-on' : '' %>"<%- view === 'board' ? ' aria-current="page"' : '' %>>Bảng 2 tuần</a>
       <a href="/calendar?view=month" class="<%= view === 'month' ? 'is-on' : '' %>"<%- view === 'month' ? ' aria-current="page"' : '' %>>Tháng</a>
