@@ -16,6 +16,14 @@ const brevo = require('./lib/brevo');
 const { icon } = require('./lib/icons');
 const constants = require('./lib/constants');
 
+// Ảnh khách sạn tuỳ chọn cho trang đăng nhập và trang tổng quan: public/img/hotel.(jpg|webp|png)
+function hotelPhoto() {
+  for (const ext of ['jpg', 'webp', 'png']) {
+    if (fs.existsSync(path.join(config.root, 'public', 'img', `hotel.${ext}`))) return `/public/img/hotel.${ext}`;
+  }
+  return null;
+}
+
 async function main() {
   await db.init();
   await migrate();
@@ -93,6 +101,7 @@ async function main() {
     res.locals.C = constants;
     res.locals.brevoLive = brevo.isLive();
     res.locals.query = req.query;
+    res.locals.hotelPhoto = hotelPhoto();
     next();
   });
 

@@ -33,7 +33,9 @@ router.get(
         'SELECT a.*, u.name AS owner_name FROM channel_accounts a LEFT JOIN users u ON u.id = a.owner_id WHERE a.channel = ?',
         [ch.key]
       );
-      const stats = await db.all('SELECT * FROM channel_stats WHERE channel = ? ORDER BY recorded_on DESC, id DESC LIMIT 2', [ch.key]);
+      const stats = await db.all('SELECT * FROM channel_stats WHERE channel = ? ORDER BY recorded_on DESC, id DESC LIMIT 60', [ch.key]);
+      const primary = summarize(stats, ch.key === 'google' ? METRICS.google[0] : METRICS.social[0]);
+      const reviews = ch.key === 'google' ? summarize(stats, METRICS.google[1]) : null;
       const perf = await db.get(
         `SELECT COUNT(*) AS posts, COALESCE(SUM(views), 0) AS views, COALESCE(SUM(likes + comments + shares), 0) AS interactions
          FROM posts WHERE channel = ? AND status = 'published' AND published_at >= ?`,
@@ -43,28 +45,92 @@ router.get(
         `SELECT COUNT(*) AS n FROM posts WHERE channel = ? AND status IN ('pending', 'scheduled') AND scheduled_at >= ?`,
         [ch.key, dates.now()]
       );
-      rows.push({ ch, account, latest: stats[0], previous: stats[1], perf, upcoming: Number(upcoming.n) });
+      rows.push({ ch, account, primary, reviews, perf, upcoming: Number(upcoming.n) });
     }
     res.render('channels/index', { title: 'Kênh mạng xã hội', rows });
   })
 );
 
+// Chỉ số chính của từng kênh. Google Maps không có "người theo dõi" nên dùng đánh giá.
+const METRICS = {
+  social: [
+    { key: 'followers', label: 'Người theo dõi' },
+    { key: 'reach', label: 'Tiếp cận' },
+    { key: 'engagement', label: 'Tương tác' },
+  ],
+  google: [
+    { key: 'rating', label: 'Điểm đánh giá', decimals: 1 },
+    { key: 'reviews', label: 'Số đánh giá' },
+    { key: 'reach', label: 'Lượt xem hồ sơ' },
+    { key: 'engagement', label: 'Lượt gọi, chỉ đường' },
+  ],
+};
+
+// Giá trị gần nhất của một chỉ số và mức thay đổi so với lần ghi trước có chỉ số đó
+function summarize(stats, metric) {
+  const rows = stats.filter((s) => s[metric.key] != null);
+  if (!rows.length) return { ...metric, value: null };
+  const value = Number(rows[0][metric.key]);
+  const prev = rows[1] ? Number(rows[1][metric.key]) : null;
+  const f = 10 ** (metric.decimals || 0);
+  const delta = prev == null ? null : Math.round((value - prev) * f) / f;
+  return { ...metric, value, on: rows[0].recorded_on, delta, prevOn: rows[1]?.recorded_on };
+}
+
 router.get(
   '/:channel',
   h(async (req, res) => {
     const ch = channelOr404(req);
-    const account = await db.get('SELECT * FROM channel_accounts WHERE channel = ?', [ch.key]);
-    const stats = await db.all(
-      'SELECT s.*, u.name AS user_name FROM channel_stats s LEFT JOIN users u ON u.id = s.created_by WHERE s.channel = ? ORDER BY s.recorded_on DESC, s.id DESC LIMIT 30',
+    const account = await db.get(
+      'SELECT a.*, u.name AS owner_name FROM channel_accounts a LEFT JOIN users u ON u.id = a.owner_id WHERE a.channel = ?',
       [ch.key]
+    );
+    const stats = await db.all(
+      'SELECT s.*, u.name AS user_name FROM channel_stats s LEFT JOIN users u ON u.id = s.created_by WHERE s.channel = ? ORDER BY s.recorded_on DESC, s.id DESC LIMIT 60',
+      [ch.key]
+    );
+    const metrics = (ch.key === 'google' ? METRICS.google : METRICS.social).map((m) => summarize(stats, m));
+    // Biểu đồ: chỉ số đầu tiên có ít nhất 2 lần ghi
+    const chartMetric = metrics.find((m) => stats.filter((s) => s[m.key] != null).length >= 2) || metrics[0];
+    const series = stats
+      .filter((s) => s[chartMetric.key] != null)
+      .slice(0, 26)
+      .reverse()
+      .map((s) => ({ day: s.recorded_on, value: Number(s[chartMetric.key]) }));
+
+    const since = dates.addDays(dates.today(), -30) + ' 00:00:00';
+    const perf = await db.get(
+      `SELECT COUNT(*) AS posts, COALESCE(SUM(views), 0) AS views,
+              COALESCE(SUM(likes), 0) AS likes, COALESCE(SUM(comments), 0) AS comments, COALESCE(SUM(shares), 0) AS shares
+       FROM posts WHERE channel = ? AND status = 'published' AND published_at >= ?`,
+      [ch.key, since]
+    );
+    const upcoming = await db.all(
+      `SELECT id, title, status, scheduled_at FROM posts
+       WHERE channel = ? AND status IN ('draft', 'pending', 'scheduled') AND scheduled_at >= ?
+       ORDER BY scheduled_at LIMIT 8`,
+      [ch.key, dates.today() + ' 00:00:00']
     );
     const posts = await db.all(
       `SELECT id, title, published_at, published_url, views, likes, comments, shares FROM posts
-       WHERE channel = ? AND status = 'published' ORDER BY published_at DESC LIMIT 15`,
+       WHERE channel = ? AND status = 'published' ORDER BY published_at DESC LIMIT 10`,
       [ch.key]
     );
     const users = await db.all(`SELECT id, name FROM users WHERE active = 1 AND role IN ('admin', 'editor') ORDER BY name`);
-    res.render('channels/show', { title: ch.name, ch, account, stats, posts, users, today: dates.today() });
+    res.render('channels/show', {
+      title: ch.name,
+      ch,
+      account,
+      stats,
+      metrics,
+      chartMetric,
+      series,
+      perf: Object.fromEntries(Object.entries(perf).map(([k, v]) => [k, Number(v || 0)])),
+      upcoming,
+      posts,
+      users,
+      today: dates.today(),
+    });
   })
 );
 

@@ -1,12 +1,15 @@
 <%- include('partials/head') %>
-<body class="plain">
-<main class="login">
-  <div class="login-mark">
-    <img src="/public/img/logo.png" alt="Bin Bin Hotel" width="96" height="96">
-    <p>Phòng marketing</p>
-  </div>
+<body class="auth">
+<aside class="auth-art<%= hotelPhoto ? ' has-photo' : '' %>"<%- hotelPhoto ? ` style="background-image:url('${hotelPhoto}')"` : '' %>>
+  <% if (!hotelPhoto) { %><img class="auth-monogram" src="/public/img/logo.png" alt=""><% } %>
+  <img class="auth-logo" src="/public/img/logo.png" alt="Bin Bin Hotel" width="88" height="88">
+  <h2>Mọi bài đăng của Bin Bin Hotel, ở một nơi</h2>
+  <p>Lên lịch, duyệt nội dung và theo dõi Facebook, TikTok, Google Maps, Zalo OA cùng email khách hàng.</p>
+</aside>
+<main class="auth-panel">
   <form method="post" action="/login" class="login-form">
     <h1>Đăng nhập</h1>
+    <p class="lead">Dành cho team marketing Bin Bin Hotel.</p>
     <input type="hidden" name="_csrf" value="<%= csrf %>">
     <input type="hidden" name="next" value="<%= next %>">
     <% if (error) { %><p class="field-error" role="alert"><%= error %></p><% } %>

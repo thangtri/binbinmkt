@@ -5,18 +5,24 @@
   const activeChannels = Object.keys(week).length;
   const pct = (a, b) => (b ? Math.round((a / b) * 100) + '%' : '—');
 %>
-<header class="page-head">
-  <div>
+<header class="welcome<%= hotelPhoto ? ' has-photo' : '' %>">
+  <div class="welcome-text">
     <p class="date-line"><%= d.weekday(today, true) %>, <%= d.dmy(today) %></p>
     <h1>Chào <%= firstName %></h1>
     <p class="summary">
-      Tuần này có <strong><%= weekTotal %> bài</strong> trên <%= activeChannels %> kênh.
+      <% if (weekTotal) { %>Tuần này có <strong><%= weekTotal %> bài</strong> trên <%= activeChannels %> kênh.<% } else { %>Tuần này chưa có bài nào trên lịch.<% } %>
       <% if (pendingCount) { %><a href="/posts?status=pending"><strong><%= pendingCount %> bài</strong> đang chờ duyệt</a>.<% } else { %>Không có bài nào chờ duyệt.<% } %>
       Tháng này đã đăng <strong><%= publishedMonth %> bài</strong>.
     </p>
+    <div class="welcome-actions">
+      <% if (can('post:create')) { %><a class="btn btn-primary" href="/posts/new"><%- icon('plus') %> Soạn bài</a><% } %>
+      <a class="btn" href="/calendar"><%- icon('calendar') %> Mở lịch đăng bài</a>
+    </div>
   </div>
-  <% if (can('post:create')) { %>
-    <a class="btn btn-primary" href="/posts/new"><%- icon('plus') %> Soạn bài</a>
+  <% if (hotelPhoto) { %>
+    <div class="welcome-photo" style="background-image:url('<%= hotelPhoto %>')" role="img" aria-label="Ảnh Bin Bin Hotel"></div>
+  <% } else { %>
+    <img class="welcome-mark" src="/public/img/logo.png" alt="" width="104" height="104">
   <% } %>
 </header>
 

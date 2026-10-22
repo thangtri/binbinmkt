@@ -23,7 +23,6 @@ Cần Node.js 22.5 trở lên (dùng SQLite có sẵn trong Node).
 ```bash
 npm install
 cp .env.example .env      # rồi điền ADMIN_EMAIL, ADMIN_PASSWORD
-npm run seed:demo         # (tuỳ chọn) dữ liệu mẫu để xem giao diện
 npm run dev
 ```
 

@@ -1,39 +1,35 @@
 <%- include('../partials/top') %>
 <header class="page-head">
-  <div><h1>Kênh mạng xã hội</h1><p class="sub">Số liệu 30 ngày gần nhất, nhập tay từ trang quản trị của từng kênh</p></div>
+  <div><h1>Kênh mạng xã hội</h1><p class="sub">Số liệu do team nhập từ trang quản trị của từng kênh. Hiệu quả bài tính trong 30 ngày gần nhất.</p></div>
 </header>
 
-<div class="panel panel-flush">
-  <table class="table table-rows channels-table">
-    <thead>
-      <tr><th>Kênh</th><th>Tài khoản</th><th class="num">Người theo dõi</th><th class="num">Bài đã đăng</th><th class="num">Lượt xem</th><th class="num">Tương tác</th><th class="num">Sắp đăng</th></tr>
-    </thead>
-    <tbody>
-      <% for (const r of rows) {
-           const f = r.latest && r.latest.followers != null ? Number(r.latest.followers) : null;
-           const pf = r.previous && r.previous.followers != null ? Number(r.previous.followers) : null;
-           const delta = f != null && pf != null ? f - pf : null; %>
-        <tr>
-          <td><a href="/channels/<%= r.ch.key %>" class="row-title"><%- include('../partials/chips', { kind: 'channel', value: r.ch.key }) %></a></td>
-          <td>
-            <% if (r.account && r.account.url) { %><a href="<%= r.account.url %>" target="_blank" rel="noopener"><%= r.account.handle || r.account.display_name || 'Mở trang' %></a>
-            <% } else { %><span class="muted"><%= (r.account && (r.account.handle || r.account.display_name)) || 'Chưa nhập' %></span><% } %>
-            <% if (r.account && r.account.owner_name) { %><small class="muted block">Phụ trách: <%= r.account.owner_name %></small><% } %>
-          </td>
-          <td class="num">
-            <% if (f != null) { %><strong><%= num(f) %></strong>
-              <% if (delta) { %><small class="<%= delta > 0 ? 'up' : 'down' %> block"><%= delta > 0 ? '+' : '' %><%= num(delta) %> so với lần trước</small><% } %>
-            <% } else { %><span class="muted">—</span><% } %>
-            <% if (r.ch.key === 'google' && r.latest && r.latest.rating != null) { %><small class="block"><%= Number(r.latest.rating).toFixed(1) %>★ từ <%= num(r.latest.reviews) %> đánh giá</small><% } %>
-          </td>
-          <td class="num"><%= num(r.perf.posts) %></td>
-          <td class="num"><%= num(r.perf.views) %></td>
-          <td class="num"><%= num(r.perf.interactions) %></td>
-          <td class="num"><%= r.upcoming %></td>
-        </tr>
-      <% } %>
-    </tbody>
-  </table>
+<div class="channel-grid">
+  <% for (const r of rows) { const p = r.primary; const isG = r.ch.key === 'google'; %>
+    <a class="channel-card ch-<%= r.ch.key %>" href="/channels/<%= r.ch.key %>">
+      <div class="cc-head">
+        <span class="cc-code"><%= r.ch.code %></span>
+        <div>
+          <strong><%= r.ch.name %></strong>
+          <small><%= (r.account && (r.account.handle || r.account.display_name)) || 'Chưa nhập tài khoản' %></small>
+        </div>
+      </div>
+      <div class="cc-main">
+        <% if (p.value == null) { %>
+          <span class="cc-value muted">Chưa có số liệu</span>
+        <% } else { %>
+          <span class="cc-value"><%= isG ? p.value.toFixed(1) + '★' : num(p.value) %></span>
+          <span class="cc-label"><%= isG ? 'từ ' + num(r.reviews.value) + ' đánh giá' : 'người theo dõi' %></span>
+          <% if (p.delta) { %><span class="cc-delta <%= p.delta > 0 ? 'up' : 'down' %>"><%= p.delta > 0 ? '+' : '' %><%= isG ? p.delta.toFixed(1) : num(p.delta) %> so với <%= d.dm(p.prevOn) %></span><% } %>
+        <% } %>
+      </div>
+      <dl class="cc-stats">
+        <div><dt>Bài đã đăng</dt><dd><%= num(r.perf.posts) %></dd></div>
+        <div><dt>Lượt xem bài</dt><dd><%= num(r.perf.views) %></dd></div>
+        <div><dt>Tương tác</dt><dd><%= num(r.perf.interactions) %></dd></div>
+        <div><dt>Sắp đăng</dt><dd><%= r.upcoming %></dd></div>
+      </dl>
+      <span class="cc-foot"><%= r.account && r.account.owner_name ? 'Phụ trách: ' + r.account.owner_name : 'Chưa phân công người phụ trách' %></span>
+    </a>
+  <% } %>
 </div>
-<p class="hint">Bấm vào tên kênh để cập nhật thông tin tài khoản và ghi số liệu mới.</p>
 <%- include('../partials/bottom') %>

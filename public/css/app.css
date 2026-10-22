@@ -34,9 +34,16 @@
   --ev-local: #0d8282;
   --ev-internal: #5d5457;
 
-  --radius: 6px;
-  --radius-sm: 4px;
-  --side-w: 232px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --side-w: 244px;
+  --shadow: 0 1px 2px rgba(42, 33, 34, 0.05), 0 4px 16px -8px rgba(42, 33, 34, 0.12);
+  /* Thanh menu luôn tối, ở cả chế độ sáng và tối */
+  --side-bg: #261d1f;
+  --side-ink: #f3eced;
+  --side-ink-2: #b9adb0;
+  --side-hover: #33282a;
+  --side-line: #3a2f31;
   --focus: 0 0 0 3px rgba(237, 50, 55, 0.35);
   --font: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color-scheme: light;
