@@ -34,6 +34,11 @@ async function main() {
   app.set('view engine', 'ejs');
   app.set('views', path.join(config.root, 'views'));
   app.set('trust proxy', 1);
+  // Mã xác thực tên miền mà Zalo / Facebook đưa ra khi đăng ký ứng dụng (thẻ meta)
+  app.locals.siteVerification = {
+    zalo: process.env.ZALO_SITE_VERIFICATION || '',
+    facebook: process.env.FACEBOOK_DOMAIN_VERIFICATION || '',
+  };
   app.disable('x-powered-by');
 
   app.use(

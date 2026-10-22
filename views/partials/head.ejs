@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title %> – Bin Bin Marketing</title>
   <link rel="icon" href="/public/img/logo.png">
+  <% if (siteVerification.zalo) { %><meta name="zalo-platform-site-verification" content="<%= siteVerification.zalo %>"><% } %>
+  <% if (siteVerification.facebook) { %><meta name="facebook-domain-verification" content="<%= siteVerification.facebook %>"><% } %>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">

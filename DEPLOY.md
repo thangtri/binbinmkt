@@ -79,15 +79,18 @@ Sau khi cấu hình, vào **Kênh → chọn kênh → Kết nối**. Số liệ
 Lấy được: điểm đánh giá, số đánh giá, tối đa 5 đánh giá tiêu biểu. Lượt xem hồ sơ và lượt gọi chỉ có qua Google Business Profile Performance API (cần Google duyệt riêng), chưa nằm trong bản này.
 
 ### Facebook Page
-1. developers.facebook.com → **My Apps → Create app** → loại **Business**.
-2. Thêm sản phẩm **Facebook Login for Business**, khai báo redirect URI ở trên.
-3. Quyền cần dùng: `pages_show_list`, `pages_read_engagement`, `read_insights`. Khi app còn ở chế độ Development, chỉ người có vai trò trong app (admin, developer, tester) mới kết nối được; với Page của chính khách sạn như vậy là đủ.
-4. Đặt `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`.
+1. developers.facebook.com → **My Apps → Create app**. Ở bước chọn trường hợp sử dụng, chọn mục quản lý Page (hoặc **Other → Business** nếu không có).
+2. Trong phần tuỳ chỉnh trường hợp sử dụng, thêm quyền `pages_show_list`, `pages_read_engagement`, `read_insights`.
+3. Mở cài đặt **Facebook Login** (không chọn "Login for Business", loại này cần cấu hình riêng) → **Valid OAuth Redirect URIs** → dán redirect URI ở trên.
+4. **App settings → Basic**: điền Privacy Policy URL `https://<tên-miền-app>/chinh-sach-bao-mat`, Terms of Service URL `https://<tên-miền-app>/dieu-khoan`; sao chép App ID và App Secret.
+5. Đặt `FACEBOOK_APP_ID`, `FACEBOOK_APP_SECRET`.
+
+Khi app còn ở chế độ Development, chỉ người có vai trò trong app (admin, developer, tester) mới kết nối được; với Page của chính khách sạn như vậy là đủ, không cần gửi Meta duyệt.
 
 Lấy được: người theo dõi, tiếp cận 28 ngày (nếu Meta còn cung cấp chỉ số này), thích/bình luận/chia sẻ của bài 28 ngày gần nhất.
 
 ### TikTok
-1. developers.tiktok.com → **Manage apps → Create app**, thêm **Login Kit** và **Display API**.
+1. developers.tiktok.com → **Manage apps → Create app**, thêm **Login Kit** và **Display API**. Điền Terms of Service URL `https://<tên-miền-app>/dieu-khoan` và Privacy Policy URL `https://<tên-miền-app>/chinh-sach-bao-mat`.
 2. Scope: `user.info.basic`, `user.info.profile`, `user.info.stats`, `video.list`; khai báo redirect URI.
 3. Gửi app để TikTok duyệt (thường vài ngày). Trong lúc chờ, dùng chế độ Sandbox và thêm tài khoản TikTok của khách sạn làm người dùng thử.
 4. Đặt `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`.

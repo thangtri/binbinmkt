@@ -41,6 +41,8 @@ module.exports = {
     webhookSecret: process.env.BREVO_WEBHOOK_SECRET || '',
   },
   uploadDir: path.resolve(root, process.env.UPLOAD_DIR || './uploads'),
+  // Email liên hệ ghi trên trang Chính sách bảo mật / Điều khoản
+  legalContact: process.env.CONTACT_EMAIL || process.env.BREVO_SENDER_EMAIL || process.env.ADMIN_EMAIL || '',
   // Khoá mã hoá token kết nối kênh; mặc định suy ra từ SESSION_SECRET
   encryptionKey: process.env.ENCRYPTION_KEY || sessionSecret || 'dev-only-secret-not-for-production',
   google: { placesApiKey: process.env.GOOGLE_PLACES_API_KEY || '' },

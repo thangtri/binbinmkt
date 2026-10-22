@@ -39,6 +39,14 @@ router.post(
   })
 );
 
+// Trang pháp lý công khai: Facebook, TikTok, Zalo yêu cầu khi đăng ký ứng dụng
+const LEGAL = { privacy: 'Chính sách bảo mật', terms: 'Điều khoản sử dụng' };
+for (const [path, page] of [['/chinh-sach-bao-mat', 'privacy'], ['/dieu-khoan', 'terms']]) {
+  router.get(path, (req, res) => {
+    res.render('legal', { title: LEGAL[page], page, updated: '22/10/2026', contact: config.legalContact });
+  });
+}
+
 const EVENT_COLUMN = {
   delivered: 'delivered_at',
   opened: 'opened_at',
