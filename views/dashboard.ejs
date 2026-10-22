@@ -25,6 +25,26 @@
   <% } %>
 </header>
 
+<% const noPost = upcoming.filter((e) => !e.post_count).length; %>
+<nav class="quick" aria-label="Việc cần chú ý">
+  <a class="quick-tile<%= due.length ? ' is-alert' : '' %>" href="/calendar">
+    <span class="quick-icon"><%- icon('calendar') %></span>
+    <span><strong><%= due.length %></strong><small>bài cần đăng hôm nay</small></span>
+  </a>
+  <a class="quick-tile<%= pendingCount ? ' is-alert' : '' %>" href="/posts?status=pending">
+    <span class="quick-icon"><%- icon('file') %></span>
+    <span><strong><%= pendingCount %></strong><small>bài chờ duyệt</small></span>
+  </a>
+  <a class="quick-tile<%= noPost ? ' is-alert' : '' %>" href="/events">
+    <span class="quick-icon"><%- icon('flag') %></span>
+    <span><strong><%= upcoming.length %></strong><small>sự kiện sắp tới<%= noPost ? ', ' + noPost + ' chưa có bài' : '' %></small></span>
+  </a>
+  <a class="quick-tile" href="/email/campaigns">
+    <span class="quick-icon"><%- icon('mail') %></span>
+    <span><strong><%= campaign ? pct(Number(campaign.stats.opened), Number(campaign.stats.total)) : '—' %></strong><small>tỷ lệ mở email gần nhất</small></span>
+  </a>
+</nav>
+
 <div class="dash">
   <div class="dash-main">
     <section class="panel">

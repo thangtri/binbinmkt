@@ -1,0 +1,457 @@
+/* Giao diện "bầu trời": nền trời sáng có mây, thẻ trắng bo tròn đổ bóng xanh nhạt,
+   nút và tab dạng viên thuốc. Đỏ Bin Bin vẫn là màu hành động chính. Nạp sau polish.css. */
+
+:root {
+  --sky-1: #c9e2fd;
+  --sky-2: #eef6ff;
+  --sky-3: #f7faff;
+  --sky-ink: #1c4f8f;
+  --canvas: #f4f8fd;
+  --sunk: #f3f7fc;
+  --line: #e3ebf5;
+  --line-strong: #cdd9e8;
+  --radius: 18px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(28, 79, 143, 0.06), 0 12px 32px -16px rgba(28, 79, 143, 0.28);
+  --shadow-lift: 0 2px 4px rgba(28, 79, 143, 0.08), 0 20px 44px -18px rgba(28, 79, 143, 0.38);
+  --side-bg: rgba(255, 255, 255, 0.82);
+  --side-ink: var(--ink);
+  --side-ink-2: #5b6b80;
+  --side-hover: #eef4fb;
+  --side-line: #e3ebf5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --sky-1: #12203a;
+    --sky-2: #141c2c;
+    --sky-3: #151a24;
+    --sky-ink: #9cc4f5;
+    --canvas: #121722;
+    --sunk: #192131;
+    --line: #253147;
+    --line-strong: #33415a;
+    --paper: #1a2232;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px -16px rgba(0, 0, 0, 0.6);
+    --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.35), 0 20px 44px -18px rgba(0, 0, 0, 0.7);
+    --side-bg: rgba(22, 29, 43, 0.9);
+    --side-ink: var(--ink);
+    --side-ink-2: #9aa8bd;
+    --side-hover: #212b3e;
+    --side-line: #253147;
+  }
+}
+
+/* Nền trời: dải xanh ở trên, vài đám mây mềm, nhạt dần xuống dưới */
+body {
+  background:
+    radial-gradient(60% 40% at 18% 2%, rgba(255, 255, 255, 0.95) 0 22%, transparent 60%),
+    radial-gradient(40% 30% at 72% 6%, rgba(255, 255, 255, 0.85) 0 18%, transparent 55%),
+    radial-gradient(30% 22% at 95% 18%, rgba(255, 255, 255, 0.7) 0 20%, transparent 60%),
+    linear-gradient(180deg, var(--sky-1) 0, var(--sky-2) 340px, var(--canvas) 720px);
+  background-attachment: fixed;
+}
+
+/* Thanh menu sáng, nền kính mờ */
+.side {
+  background: var(--side-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-right: 1px solid var(--side-line);
+  box-shadow: 8px 0 30px -24px rgba(28, 79, 143, 0.4);
+}
+.side .brand {
+  border-bottom-color: var(--side-line);
+}
+.side .brand img {
+  box-shadow: 0 6px 16px -6px rgba(237, 50, 55, 0.55);
+}
+.side .nav-item {
+  border-radius: 999px;
+}
+.side .nav-item.is-on {
+  background: var(--red-strong);
+  color: #fff;
+  box-shadow: 0 8px 18px -8px rgba(200, 35, 43, 0.65);
+}
+.side .nav-item.is-on .icon {
+  color: #fff;
+}
+.side .nav-item.is-on::before {
+  display: none;
+}
+.side .icon-btn:hover {
+  color: var(--ink);
+}
+.topbar {
+  background: var(--side-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Thẻ */
+.panel,
+.board-scroll,
+.month,
+.ev-list,
+.steps,
+.kpi,
+.channel-card,
+.welcome {
+  border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.panel-head h2,
+.panel > h2 {
+  font-weight: 700;
+  color: var(--sky-ink);
+}
+.table th {
+  background: transparent;
+  color: #6b7c93;
+  border-bottom-color: var(--line);
+}
+.table-rows tbody tr:hover {
+  background: var(--sky-3);
+}
+
+/* Nút và tab dạng viên thuốc */
+.btn {
+  border-radius: 999px;
+  padding-left: 18px;
+  padding-right: 18px;
+}
+.btn-small {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+.btn-danger-quiet {
+  padding-left: 0;
+}
+.btn:not(.btn-primary):not(.btn-quiet):not(.btn-danger-quiet) {
+  border-color: var(--line-strong);
+  background: var(--paper);
+}
+.btn:not(.btn-primary):not(.btn-quiet):not(.btn-danger-quiet):hover {
+  border-color: var(--sky-ink);
+  color: var(--sky-ink);
+}
+.seg {
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+  border-color: var(--line);
+  box-shadow: var(--shadow);
+}
+.seg a {
+  border-left: 0;
+  border-radius: 999px;
+  min-height: 32px;
+}
+.seg a.is-on {
+  background: var(--red-strong);
+  color: #fff;
+}
+.tabs {
+  gap: 6px;
+  border-bottom: 0;
+  padding: 4px;
+  background: var(--paper);
+  border-radius: 999px;
+  width: fit-content;
+  max-width: 100%;
+  box-shadow: var(--shadow);
+}
+.tabs a {
+  border-bottom: 0;
+  margin: 0;
+  padding: 7px 16px;
+  border-radius: 999px;
+}
+.tabs a.is-on {
+  background: var(--red-strong);
+  color: #fff;
+}
+.tabs a.is-on .count {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='search'],
+input[type='url'],
+input[type='tel'],
+input[type='number'],
+input[type='date'],
+input[type='time'],
+select,
+textarea {
+  border-radius: 12px;
+  border-color: var(--line-strong);
+}
+
+/* Tiêu đề trang to, đậm */
+h1 {
+  font-size: 2.1rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+/* Trang tổng quan: khối đầu trang kiểu bầu trời */
+.welcome {
+  background:
+    radial-gradient(28% 45% at 12% 105%, rgba(255, 255, 255, 0.95) 0 35%, transparent 70%),
+    radial-gradient(22% 40% at 34% 112%, rgba(255, 255, 255, 0.9) 0 35%, transparent 70%),
+    radial-gradient(30% 50% at 62% -10%, rgba(255, 255, 255, 0.7) 0 30%, transparent 70%),
+    linear-gradient(135deg, #b9dbff 0%, #dcedff 45%, #f4f9ff 100%);
+  padding: 34px 36px;
+  border: 0;
+}
+.welcome::before {
+  display: none;
+}
+.welcome h1 {
+  font-size: 2.6rem;
+  line-height: 1.1;
+}
+.welcome .date-line {
+  color: var(--sky-ink);
+  font-weight: 600;
+}
+.welcome.has-photo {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 42%);
+  padding: 0;
+}
+.welcome.has-photo .welcome-text {
+  padding: 34px 0 34px 36px;
+}
+.welcome-photo {
+  margin: 14px;
+  border-radius: calc(var(--radius) - 6px);
+  min-height: 230px;
+  box-shadow: var(--shadow-lift);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .welcome {
+    background: linear-gradient(120deg, #17263f 0%, #1a2232 70%);
+  }
+}
+
+/* Dải ô nhanh dưới khối đầu trang, mỗi ô có icon trong khung trắng */
+.quick {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.quick-tile {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 18px;
+  background: var(--paper);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  color: var(--ink);
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.quick-tile:hover {
+  color: var(--ink);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+.quick-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #ffffff, #e8f2ff);
+  color: var(--sky-ink);
+  box-shadow: inset 0 0 0 1px #dbe8f7, 0 8px 18px -10px rgba(28, 79, 143, 0.5);
+}
+.quick-icon .icon {
+  width: 24px;
+  height: 24px;
+}
+.quick-tile.is-alert .quick-icon {
+  background: linear-gradient(145deg, #fff, #ffe9ea);
+  color: var(--red-strong);
+  box-shadow: inset 0 0 0 1px #f8d3d5, 0 8px 18px -10px rgba(200, 35, 43, 0.5);
+}
+.quick-tile strong {
+  display: block;
+  font-size: 1.45rem;
+  line-height: 1.15;
+}
+.quick-tile small {
+  color: var(--ink-2);
+  font-size: 0.84rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .quick-icon {
+    background: #212c41;
+    box-shadow: inset 0 0 0 1px #2c3a54;
+  }
+  :root:not([data-theme='light']) .quick-tile.is-alert .quick-icon {
+    background: #3a1d22;
+    box-shadow: inset 0 0 0 1px #5a2a30;
+  }
+}
+
+/* Tiến trình bài: các bước tròn nối nét đứt */
+.steps {
+  background: var(--paper);
+  padding: 6px;
+  gap: 6px;
+}
+.steps li {
+  border-left: 0;
+  border-radius: 999px;
+  position: relative;
+}
+.steps li.is-now {
+  background: var(--red-tint);
+}
+.steps li + li::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  width: 10px;
+  border-top: 2px dashed var(--line-strong);
+}
+
+/* Thẻ kênh và chỉ số */
+.channel-card {
+  border-top: 0;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.channel-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  background: var(--ch-color);
+}
+.channel-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+.cc-code {
+  border-radius: 14px;
+  box-shadow: 0 8px 18px -8px var(--ch-color);
+}
+.kpi-value,
+.cc-value {
+  color: var(--sky-ink);
+}
+
+/* Lịch */
+.board-scroll,
+.month {
+  background: var(--paper);
+}
+.b-day.is-today {
+  border-top-color: var(--red);
+}
+.chip {
+  border-radius: 8px;
+}
+.evbar {
+  border-radius: 999px;
+}
+
+/* Đăng nhập: bầu trời có mây */
+body.auth {
+  background:
+    radial-gradient(40% 30% at 20% 85%, rgba(255, 255, 255, 0.9) 0 20%, transparent 60%),
+    radial-gradient(35% 25% at 80% 90%, rgba(255, 255, 255, 0.85) 0 18%, transparent 60%),
+    linear-gradient(180deg, #cfe5ff 0%, #eaf4ff 55%, #ffffff 100%);
+}
+.auth-art {
+  margin: 18px;
+  border-radius: 26px;
+  box-shadow: var(--shadow-lift);
+}
+.auth-panel .login-form {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 32px 30px;
+  border-radius: 24px;
+  box-shadow: var(--shadow-lift);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) body.auth {
+    background: linear-gradient(180deg, #12203a 0%, #121722 70%);
+  }
+  :root:not([data-theme='light']) .auth-panel .login-form {
+    background: rgba(26, 34, 50, 0.92);
+  }
+}
+
+@media (max-width: 1100px) {
+  .quick {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 860px) {
+  h1 {
+    font-size: 1.6rem;
+  }
+  .welcome h1 {
+    font-size: 1.9rem;
+  }
+  .welcome,
+  .welcome.has-photo {
+    grid-template-columns: 1fr;
+    padding: 20px 20px 22px 24px;
+  }
+  .welcome.has-photo .welcome-text {
+    padding: 0;
+  }
+  .welcome-photo {
+    margin: -20px -20px 0 -24px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .quick {
+    gap: 10px;
+  }
+  .quick-tile {
+    padding: 12px;
+    gap: 10px;
+  }
+  .quick-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+  .auth-art {
+    margin: 10px;
+    border-radius: 20px;
+  }
+  .tabs {
+    width: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-tile,
+  .channel-card {
+    transition: none;
+  }
+  .quick-tile:hover,
+  .channel-card:hover {
+    transform: none;
+  }
+}
+.cc-value.muted {
+  color: var(--ink-3);
+}
