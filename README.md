@@ -25,31 +25,32 @@ Facebook và TikTok tự đăng; Google Maps và Zalo OA team đăng tay. App lo
 
 ## Chạy thử trên máy
 
-Cần Node.js 22.5 trở lên (dùng SQLite có sẵn trong Node).
+Cần PHP 8.2 trở lên (có `pdo_sqlite`, `curl`, `mbstring`, `openssl`, `fileinfo`).
 
 ```bash
-npm install
 cp .env.example .env      # rồi điền ADMIN_USERNAME, ADMIN_EMAIL, ADMIN_PASSWORD
-npm run dev
+php -S localhost:8000 index.php
 ```
 
-Mở http://localhost:3000 và đăng nhập bằng `ADMIN_USERNAME` / `ADMIN_PASSWORD` trong `.env`.
+Mở http://localhost:8000 và đăng nhập bằng `ADMIN_USERNAME` / `ADMIN_PASSWORD` trong `.env`. Việc nền (tự đăng bài, gửi email, cập nhật số liệu) chạy bằng `php cron.php`.
 
 ## Cấu trúc
 
 ```
-src/
-  server.js          Khởi động Express, bảo mật, phiên đăng nhập, CSRF
-  config.js          Đọc biến môi trường
-  db/                Kết nối MySQL/SQLite, migration, dữ liệu nền
-  lib/               Đăng nhập & phân quyền, ngày giờ VN, Brevo, upload, CSV
-  routes/            Mỗi mục một file: posts, calendar, events, channels, email, users
-views/               Giao diện EJS
+index.php            Cửa vào duy nhất: bảo mật, phiên đăng nhập, CSRF, định tuyến
+cron.php             Việc nền chạy mỗi phút
+app/
+  config.php         Đọc file cấu hình (binbin.env hoặc .env)
+  db.php, schema.php Kết nối MySQL/SQLite, migration, dữ liệu nền
+  lib/               Đăng nhập & phân quyền, ngày giờ VN, Brevo, upload, AI, kết nối kênh, tự đăng bài
+  routes/            Mỗi mục một file: posts, calendar, events, channels, email, users…
+views/               Giao diện (PHP)
 public/              CSS, JS, logo
+vendor/              Thư viện PHP (Claude SDK chính thức), đã có sẵn, không cần Composer trên máy chủ
 ```
 
-Không có bước build. Database tự tạo bảng khi khởi động lần đầu.
+Không có bước build. Database tự tạo bảng ở lần truy cập đầu tiên. Bản Node.js cũ nằm trong nhánh `nodejs`.
 
 ## Deploy
 
-Xem [DEPLOY.md](DEPLOY.md): đưa code lên GitHub, tạo MySQL và app Node.js trên Hostinger, cấu hình Brevo.
+Xem [DEPLOY.md](DEPLOY.md): đưa code lên GitHub, tạo MySQL, triển khai bằng Git trên Hostinger, file cấu hình `binbin.env`, Cron Job, Brevo và kết nối kênh.

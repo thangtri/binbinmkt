@@ -1,0 +1,22 @@
+<?= partial('partials/head') ?>
+<body class="plain">
+<main class="login">
+  <div class="login-mark"><img src="/public/img/logo.png" alt="Bin Bin Hotel" width="72" height="72"></div>
+  <div class="login-form">
+    <?php if (!$contact): ?>
+      <h1>Link không còn hiệu lực</h1>
+      <p>Không tìm thấy đăng ký nào ứng với link này. Có thể email đã được xoá khỏi danh sách.</p>
+    <?php elseif ($done || !(int) $contact['subscribed']): ?>
+      <h1>Bạn đã huỷ nhận email</h1>
+      <p><strong><?= e($contact['email']) ?></strong> sẽ không nhận email ưu đãi từ Bin Bin Hotel nữa. Email xác nhận đặt phòng vẫn được gửi bình thường.</p>
+    <?php else: ?>
+      <h1>Huỷ nhận email từ Bin Bin Hotel?</h1>
+      <p>Bạn sẽ không nhận tin ưu đãi gửi tới <strong><?= e($contact['email']) ?></strong> nữa.</p>
+      <form method="post" action="/u/<?= e($token) ?>">
+        <button class="btn btn-primary" type="submit">Huỷ nhận email</button>
+      </form>
+    <?php endif ?>
+  </div>
+</main>
+</body>
+</html>

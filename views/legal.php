@@ -1,0 +1,34 @@
+<?= partial('partials/head') ?>
+<body class="plain legal-page">
+<main class="legal">
+  <a class="legal-brand" href="/"><img src="/public/img/logo.png" alt="" width="44" height="44"><span>Bin Bin Hotel</span></a>
+  <?php if ($page === 'privacy'): ?>
+    <h1>Chính sách bảo mật</h1>
+    <p class="muted">Cập nhật ngày <?= e($updated) ?></p>
+    <p>Bin Bin Marketing là công cụ nội bộ của Bin Bin Hotel, chỉ nhân viên được cấp tài khoản mới sử dụng. Trang này giải thích công cụ thu thập và dùng dữ liệu nào.</p>
+    <h2>Dữ liệu từ các kênh mạng xã hội</h2>
+    <p>Khi quản trị viên kết nối Facebook Page, TikTok hoặc Zalo Official Account của Bin Bin Hotel, công cụ chỉ đọc số liệu của chính các tài khoản đó: số người theo dõi, lượt tiếp cận, lượt xem, lượt thích, bình luận, chia sẻ và tiêu đề bài đăng. Công cụ chỉ đăng lên Page Facebook và tài khoản TikTok của Bin Bin Hotel những bài đã được nhân viên duyệt; công cụ không gửi tin nhắn và không đọc dữ liệu cá nhân của người theo dõi.</p>
+    <p>Mã truy cập (token) do các nền tảng cấp được mã hoá trước khi lưu. Quản trị viên có thể ngắt kết nối bất cứ lúc nào trong trang Kênh; khi đó token bị xoá. Bạn cũng có thể thu hồi quyền trong phần cài đặt ứng dụng của Facebook, TikTok hoặc Zalo.</p>
+    <h2>Phân tích bằng AI</h2>
+    <p>Số liệu tổng hợp của kênh được gửi tới dịch vụ AI của Anthropic để viết nhận xét cho đội marketing. Không có thông tin cá nhân của khách hàng trong dữ liệu gửi đi, trừ tên hiển thị và nội dung các đánh giá công khai trên Google Maps.</p>
+    <h2>Email marketing</h2>
+    <p>Danh sách email khách hàng chỉ dùng để gửi tin ưu đãi của Bin Bin Hotel qua dịch vụ Brevo. Mỗi email đều có liên kết huỷ nhận tin; khi khách huỷ, địa chỉ đó không nhận email ưu đãi nữa.</p>
+    <h2>Lưu trữ và xoá dữ liệu</h2>
+    <p>Dữ liệu được lưu trên máy chủ của Bin Bin Hotel. Để yêu cầu xem hoặc xoá dữ liệu liên quan tới bạn, liên hệ <a href="mailto:<?= e($contact) ?>"><?= e($contact) ?></a>.</p>
+  <?php else: ?>
+    <h1>Điều khoản sử dụng</h1>
+    <p class="muted">Cập nhật ngày <?= e($updated) ?></p>
+    <p>Bin Bin Marketing là công cụ nội bộ của Bin Bin Hotel dùng để lên lịch nội dung, theo dõi số liệu các kênh mạng xã hội của khách sạn và gửi email marketing.</p>
+    <h2>Người được sử dụng</h2>
+    <p>Chỉ nhân viên và cộng tác viên được Bin Bin Hotel cấp tài khoản. Mỗi người tự bảo quản mật khẩu của mình và không chia sẻ tài khoản.</p>
+    <h2>Kết nối tài khoản mạng xã hội</h2>
+    <p>Chỉ quản trị viên có quyền quản lý tài khoản mạng xã hội của Bin Bin Hotel mới được kết nối tài khoản đó. Công cụ đọc số liệu và chỉ tự đăng những bài đã được quản trị viên duyệt.</p>
+    <h2>Nội dung</h2>
+    <p>Người soạn bài chịu trách nhiệm về nội dung, hình ảnh và bản quyền của bài trước khi đăng. Phân tích của AI chỉ mang tính tham khảo.</p>
+    <h2>Liên hệ</h2>
+    <p>Mọi câu hỏi về công cụ, liên hệ <a href="mailto:<?= e($contact) ?>"><?= e($contact) ?></a>.</p>
+  <?php endif ?>
+  <p class="legal-links"><a href="/chinh-sach-bao-mat">Chính sách bảo mật</a> <a href="/dieu-khoan">Điều khoản sử dụng</a></p>
+</main>
+</body>
+</html>

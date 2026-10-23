@@ -1,0 +1,12 @@
+<?= partial('partials/head') ?>
+<body class="plain">
+<main class="login">
+  <div class="login-mark"><img src="/public/img/logo.png" alt="Bin Bin Hotel" width="72" height="72"></div>
+  <div class="login-form">
+    <h1><?= e($title) ?></h1>
+    <p><?= e($message) ?></p>
+    <p><a class="btn btn-primary" href="/">Về trang tổng quan</a></p>
+  </div>
+</main>
+</body>
+</html>

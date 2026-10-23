@@ -1,9 +1,0 @@
-<%#
-  Dùng: include('partials/chips', { kind: 'status', value: post.status })
-        include('partials/chips', { kind: 'channel', value: post.channel })
-%>
-<% if (kind === 'status') { %>
-  <span class="status status-<%= value %>"><%= C.STATUSES[value] ? C.STATUSES[value].label : value %></span>
-<% } else if (kind === 'channel') { const ch = C.CHANNELS[value]; %>
-  <span class="ch ch-<%= value %>"><b><%= ch ? ch.code : '?' %></b><%= ch ? ch.name : value %></span>
-<% } %>

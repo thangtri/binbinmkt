@@ -1,0 +1,35 @@
+# Hostinger (LiteSpeed/Apache): mọi đường dẫn đi qua index.php, trừ file có thật trong /public.
+# Code, cấu hình, database và ảnh tải lên không bao giờ được trả thẳng ra ngoài.
+
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Luôn dùng HTTPS
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # File tĩnh (CSS, JS, logo) trả thẳng
+  RewriteCond %{REQUEST_URI} ^/public/
+  RewriteCond %{REQUEST_FILENAME} -f
+  RewriteRule ^ - [L]
+
+  # Còn lại (kể cả /app, /data, /uploads, .env…) đều vào index.php
+  RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
+# Chặn file ẩn (.env, .git…) nếu máy chủ không có mod_rewrite
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/jpeg "access plus 30 days"
+</IfModule>
